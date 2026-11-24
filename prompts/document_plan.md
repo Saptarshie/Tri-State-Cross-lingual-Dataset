@@ -1,5 +1,5 @@
 ---
-version: 1.0.0
+version: 1.1.0
 stage: document_plan
 description: Expand a soft blueprint into a sectioned long-form document plan.
 ---
@@ -19,7 +19,7 @@ TONE: {{tone}}
 STRUCTURE: {{structure}}
 COMPLEXITY: {{complexity}}
 TARGET DOCUMENT LENGTH: {{token_min}}-{{token_max}} tokens (model tokens)
-TARGET SECTION COUNT: {{sections_min}}-{{sections_max}}
+TARGET SECTION COUNT: {{sections_min}}-{{sections_max}} (aim for {{sections_target}})
 TARGET SECTION LENGTH: {{section_tokens_min}}-{{section_tokens_max}} tokens
 TARGET CHECKABLE FACTS: about {{target_fact_count}} across the document, spread out
 SEED INTENT: {{seed_intent}}

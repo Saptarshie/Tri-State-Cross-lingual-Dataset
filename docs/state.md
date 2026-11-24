@@ -36,7 +36,7 @@ families are immutable; quarantined candidates keep their workdir and reasons.
 - Models: **all stages `deepseek/deepseek-v4.1-flash`** (operator changed every stage; this removes
   the cross-family separation the validator design preferred — see limitations).
 - Embeddings: local Ollama `embeddinggemma` (768-d), cached under `data/embeddings/`.
-- Tests: `129 passed` (offline); `ruff check --select F,E9` clean.
+- Tests: `130 passed` (offline); `ruff check --select F,E9` clean.
 - Base-document length: configurable (`passage.target_tokens_*`), default 2,000–4,000; the
   pilot-02 export predates this and is the short-passage regime.
 

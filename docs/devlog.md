@@ -162,7 +162,7 @@ worth remembering. Times are local (IST).
   term/number overlap), the editor view includes them, and CONTRADICTED/UNSUPPORTED plans are
   rejected until every mention is a patch target; the validator prompt now forbids chaining
   separate facts and reserves `UNCERTAIN` for genuine internal contradiction.
-- Test suite grown to **129 tests**, all passing offline (`pytest -q`); ruff `F,E9` clean.
+- Test suite grown to **130 tests**, all passing offline (`pytest -q`); ruff `F,E9` clean.
 - Wrote `README.md`, `docs/design.md`, `docs/state.md`, `docs/runbook.md`,
   `docs/dataset-card.md`, `docs/reports/pilot-02-*`, this log.
 - Exported immutable versions `pilot-01` (14 families) and `pilot-02` (15 families).

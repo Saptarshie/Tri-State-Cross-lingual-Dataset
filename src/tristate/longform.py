@@ -60,6 +60,10 @@ def plan_document(
     p = cfg.passage
     expected_sections = target_section_count(cfg)
     effective_max = max(p.sections_max, expected_sections)
+    # ask for a plan close to the derived count, not merely within the global bound:
+    # a 10k target planned as 4 sections cannot reach the length band
+    sections_low = max(p.sections_min, int(round(expected_sections * 0.75)))
+    sections_high = min(effective_max, max(sections_low, int(round(expected_sections * 1.25))))
     result = llm.structured(
         "document_plan",
         {
@@ -71,8 +75,9 @@ def plan_document(
             "complexity": blueprint.complexity,
             "token_min": p.target_tokens_min,
             "token_max": p.target_tokens_max,
-            "sections_min": p.sections_min,
-            "sections_max": effective_max,
+            "sections_min": sections_low,
+            "sections_max": sections_high,
+            "sections_target": expected_sections,
             "section_tokens_min": p.section_tokens_min,
             "section_tokens_max": p.section_tokens_max,
             "target_fact_count": blueprint.target_fact_count,
@@ -85,11 +90,11 @@ def plan_document(
         candidate_id=candidate_id,
     )
     plan = result.data
-    if not (p.sections_min <= len(plan.sections) <= effective_max):
+    if not (sections_low <= len(plan.sections) <= sections_high):
         raise StageError(
             "document_plan_invalid",
-            f"planned {len(plan.sections)} sections, expected {p.sections_min}-{effective_max}",
-            {"sections": [s.section_id for s in plan.sections]},
+            f"planned {len(plan.sections)} sections, expected {sections_low}-{sections_high}",
+            {"sections": [s.section_id for s in plan.sections], "target": expected_sections},
         )
     ids = [s.section_id for s in plan.sections]
     if ids != [f"S{i}" for i in range(1, len(ids) + 1)]:

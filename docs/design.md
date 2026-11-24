@@ -226,8 +226,8 @@ test suite). Otherwise generation is sectioned:
 2. **Document plan** (`prompts/document_plan.md` → `DocumentPlan`) fixes a throughline and a list
    of `SectionPlan`s: id, title, purpose, target tokens, key points, expected entities/relations.
    Section count is derived (`target_mean / section_mean`, clamped to
-   `sections_min..max_sections`); the plan is rejected if it falls outside
-   `sections_min..max(sections_max, derived)`.
+   `sections_min..max_sections`); the prompt is asked for 75–125% of that figure and the plan is
+   rejected outside that band, so a 10k target cannot silently become a four-section document.
 3. **Section writing** (`prompts/section.md`) is one call per section with the blueprint, the
    throughline, the section spec, the covered-point list and the last
    `section_context_chars` of prior text. Sections are independent artefacts
@@ -547,7 +547,7 @@ claims:
 
 ## 14. Testing
 
-129 tests, no network:
+130 tests, no network:
 
 - utilities: sentence segmentation, hashing, script/meta checks, atomic IO;
 - IDs and schema invariants (three labels, unique claims, distinct accepted variants);

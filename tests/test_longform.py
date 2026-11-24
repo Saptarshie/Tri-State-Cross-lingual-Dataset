@@ -4,7 +4,7 @@ from tristate.claims import choose_claim_facts
 from tristate.config import load_config
 from tristate.editor import editing_view
 from tristate.extract import _select_windows, split_windows
-from tristate.longform import assemble, check_document, SectionDraft
+from tristate.longform import assemble, check_document, target_section_count, SectionDraft
 from tristate.schema import (
     Claim,
     DocumentPlan,
@@ -34,6 +34,13 @@ def _plan(n: int = 3) -> DocumentPlan:
             for i in range(n)
         ],
     )
+
+
+def test_target_section_count_scales_to_long_targets():
+    cfg = load_config(overrides={"passage": {"target_tokens_min": 10000, "target_tokens_max": 15000}})
+    n = target_section_count(cfg)
+    assert 15 <= n <= 24
+    assert n * cfg.passage.section_tokens_min <= 15000
 
 
 def test_split_windows_covers_document_and_respects_cap():

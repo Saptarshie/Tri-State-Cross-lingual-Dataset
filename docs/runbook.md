@@ -200,6 +200,6 @@ for a clean regeneration, remove the candidate workdir or use a new data directo
 env -u PYTHONPATH .venv/Scripts/python.exe -m pytest -q
 ```
 
-129 tests, no network, ~15 seconds. The mock pipeline tests exercise the full stage graph,
+130 tests, no network, ~15 seconds. The mock pipeline tests exercise the full stage graph,
 resume, idempotency, index-update ordering, splits, quarantine, export and reports; the long-form
 tests cover window splitting, section assembly offsets, document screening and claim spreading.

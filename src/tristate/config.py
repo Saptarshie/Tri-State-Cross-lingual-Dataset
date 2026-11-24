@@ -68,6 +68,56 @@ class CorpusCfg(BaseModel):
         return self
 
 
+class PassageCfg(BaseModel):
+    """Base artifact length and sectioning.
+
+    Tokens are model tokens estimated by util.approx_tokens (~0.75 per word). The default
+    band is deliberately moderate; raise it to 10k-15k for long-context RAG training.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    target_tokens_min: int = 2000
+    target_tokens_max: int = 4000
+    sections_min: int = 3
+    sections_max: int = 8
+    section_tokens_min: int = 450
+    section_tokens_max: int = 900
+    max_sections: int = 24
+    section_context_chars: int = 1600
+    single_call_below_tokens: int = 700
+    section_repair_attempts: int = 1
+    min_document_ratio: float = 0.8
+    max_document_ratio: float = 1.25
+    max_cross_section_overlap: float = 0.15
+
+    @model_validator(mode="after")
+    def _bands(self) -> "PassageCfg":
+        if self.target_tokens_min >= self.target_tokens_max:
+            raise ValueError("passage.target_tokens_min must be < target_tokens_max")
+        if self.sections_min < 1 or self.sections_min > self.sections_max:
+            raise ValueError("passage.sections_min must be >= 1 and <= sections_max")
+        if self.section_tokens_min >= self.section_tokens_max:
+            raise ValueError("passage.section_tokens_min must be < section_tokens_max")
+        if self.max_sections < self.sections_max:
+            raise ValueError("passage.max_sections must be >= sections_max")
+        if not (0 < self.min_document_ratio <= 1 <= self.max_document_ratio):
+            raise ValueError("document ratios must satisfy 0 < min <= 1 <= max")
+        return self
+
+
+class ExtractionCfg(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    window_tokens: int = 1500  # 0 = extract the whole document in one call
+    max_windows: int = 12
+    min_facts: int = 2
+
+    @model_validator(mode="after")
+    def _windows(self) -> "ExtractionCfg":
+        if self.window_tokens < 0 or self.max_windows < 1:
+            raise ValueError("extraction window bounds must be non-negative")
+        return self
+
+
 class BlueprintCfg(BaseModel):
     model_config = ConfigDict(extra="forbid")
     candidates_per_topic: int = 2
@@ -97,7 +147,9 @@ class BlueprintCfg(BaseModel):
 class ClaimsCfg(BaseModel):
     model_config = ConfigDict(extra="forbid")
     min_claims_per_family: int = 2
-    max_claims_per_family: int = 5
+    max_claims_per_family: int = 12
+    target_claims_per_document: int = 4
+    min_distinct_sections: int = 2
     min_fact_confidence: float = 0.55
     require_atomic_claims: bool = True
     max_claim_chars: int = 220
@@ -108,6 +160,11 @@ class ClaimsCfg(BaseModel):
             raise ValueError("min_claims_per_family >= 1")
         if self.min_claims_per_family > self.max_claims_per_family:
             raise ValueError("min_claims_per_family must be <= max_claims_per_family")
+        # keep the target inside bounds rather than rejecting a test/config that only
+        # overrides min/max (common when widening the claim range)
+        self.target_claims_per_document = max(
+            self.min_claims_per_family, min(self.max_claims_per_family, self.target_claims_per_document)
+        )
         return self
 
 
@@ -120,6 +177,11 @@ class VariantsCfg(BaseModel):
     min_length_ratio: float = 0.45
     max_length_ratio: float = 1.9
     min_content_overlap: float = 0.25
+    long_document_tokens: int = 1200
+    min_length_ratio_long: float = 0.7
+    max_length_ratio_long: float = 1.3
+    edit_view_sentences: int = 2
+    edit_view_max_sentences: int = 120
 
     @field_validator("required_labels")
     @classmethod
@@ -148,6 +210,8 @@ class HnswCfg(BaseModel):
     api_model: str = ""
     near_duplicate_cosine: float = 0.93
     near_duplicate_jaccard: float = 0.82
+    passage_chunk_tokens: int = 1200
+    near_duplicate_chunk_fraction: float = 0.5
     split_aware: bool = True
 
 
@@ -190,7 +254,7 @@ class ExecutionCfg(BaseModel):
     backoff_base_s: float = 1.5
     backoff_max_s: float = 30.0
     max_total_cost_usd: float = 5.0
-    max_calls_per_family: int = 40
+    max_calls_per_family: int = 80
     request_timeout_s: float = 120.0
     checkpoint_every: int = 5
     retry_permanent_errors: bool = False
@@ -255,6 +319,8 @@ class Config(BaseModel):
     model_config = ConfigDict(extra="forbid")
     project: ProjectCfg = Field(default_factory=ProjectCfg)
     corpus: CorpusCfg = Field(default_factory=CorpusCfg)
+    passage: PassageCfg = Field(default_factory=PassageCfg)
+    extraction: ExtractionCfg = Field(default_factory=ExtractionCfg)
     blueprint: BlueprintCfg = Field(default_factory=BlueprintCfg)
     claims: ClaimsCfg = Field(default_factory=ClaimsCfg)
     variants: VariantsCfg = Field(default_factory=VariantsCfg)

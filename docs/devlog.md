@@ -140,7 +140,29 @@ worth remembering. Times are local (IST).
   and the candidate was quarantined `internal` — the diagnostic could veto a family it is
   explicitly not supposed to gate. Now recorded as `status: unavailable` with no misses, and a
   regression test forces the extraction failure to prove the family still accepts.
-- Test suite grown to **121 tests**, all passing offline (`pytest -q`); ruff `F,E9` clean.
+- **Long-form base documents (2026-11-25).** A 130-token "passage" is not a RAG context, so the
+  base artifact became a configurable document. `passage.target_tokens_min/max` (default
+  2,000–4,000) drives a soft blueprint, a `DocumentPlan`, and one call per
+  `section_tokens`-sized section with per-section artefacts and repair. Assembly verifies
+  offsets and screens total length and 12-gram cross-section overlap. The compact concept is now
+  only a novelty constraint, not a length target.
+- **Long documents broke single-vector novelty.** The embedding model cannot see a 10k-token
+  document, so the passage index stores sentence-aligned chunks (`passage_chunk_tokens`, default
+  1,200) with offsets and per-chunk hashes; a document is a near-duplicate if any chunk matches
+  or at least half its chunks individually match.
+- **Extraction and claims scale with length.** `extraction.window_tokens` (default 1,500) windows
+  the document at sentence boundaries with global sentence-ID offsets; `max_windows` caps calls.
+  `claims.target_claims_per_document` replaces the run-level constant and
+  `claims.min_distinct_sections` spreads claims across sections; prompts receive the numbers as
+  render variables.
+- **Long-document tri-state editing failed on restatements.** First real 3k-token run: 2/2
+  quarantined `family_rejected`; UNSUPPORTED still entailed a claim stated in another section,
+  CONTRADICTED returned `UNCERTAIN` because the document contained both the original and the
+  mutated value. Fixes: `claim_mentions()` collects every plausible restatement (evidence +
+  term/number overlap), the editor view includes them, and CONTRADICTED/UNSUPPORTED plans are
+  rejected until every mention is a patch target; the validator prompt now forbids chaining
+  separate facts and reserves `UNCERTAIN` for genuine internal contradiction.
+- Test suite grown to **129 tests**, all passing offline (`pytest -q`); ruff `F,E9` clean.
 - Wrote `README.md`, `docs/design.md`, `docs/state.md`, `docs/runbook.md`,
   `docs/dataset-card.md`, `docs/reports/pilot-02-*`, this log.
 - Exported immutable versions `pilot-01` (14 families) and `pilot-02` (15 families).

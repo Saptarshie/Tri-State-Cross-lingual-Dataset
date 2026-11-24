@@ -2,20 +2,23 @@
 
 Claims are filtered by deterministic atomicity checks before any validator sees them:
 one proposition, no pronoun-led sentence, anchored evidence, distinct from siblings.
+For long documents, candidate facts are chosen across sections first, so claims are
+distributed through the document instead of clustering in the opening.
 """
 
 from __future__ import annotations
 
 import json
 import re
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 from .config import Config
 from .errors import StageError
 from .llm import LlmClient
-from .schema import Claim, SemanticRepresentation
-from .spans import resolve_quote, sentences_for_prompt
+from .schema import Claim, Fact, PassageSection, SemanticRepresentation
+from .spans import resolve_quote, sentence_index
 from .util import containment, jaccard, normalize_ws, token_set, word_ngrams
 
 _PRONOUN_START = re.compile(
@@ -83,17 +86,103 @@ def _claim_problems(
     return problems
 
 
+def _fact_section(fact: Fact, sections: list[PassageSection] | None) -> str | None:
+    if fact.section_id:
+        return fact.section_id
+    if not sections:
+        return None
+    for span in fact.source_spans:
+        for sec in sections:
+            if sec.start_char <= span.start_char < sec.end_char:
+                return sec.section_id
+    return None
+
+
+def choose_claim_facts(
+    semantic: SemanticRepresentation,
+    cfg: Config,
+    sections: list[PassageSection] | None = None,
+) -> list[Fact]:
+    """Pick up to the target number of facts, spread across sections and predicates."""
+    target = cfg.claims.target_claims_per_document
+    buckets: dict[str, list[Fact]] = {}
+    order: list[str] = []
+    for fact in semantic.facts:
+        key = _fact_section(fact, sections) or "_doc"
+        if key not in buckets:
+            buckets[key] = []
+            order.append(key)
+        buckets[key].append(fact)
+
+    # if no sectioning is available, bucket by the single "_doc" key
+    selected: list[Fact] = []
+    deferred: list[Fact] = []
+    seen_pred: set[str] = set()
+    while len(selected) < target and any(buckets.values()):
+        progressed = False
+        for key in order:
+            bucket = buckets.get(key) or []
+            while bucket:
+                fact = bucket.pop(0)
+                pred = fact.predicate.lower()
+                if pred in seen_pred and len(selected) + 1 < target:
+                    deferred.append(fact)
+                    continue
+                selected.append(fact)
+                seen_pred.add(pred)
+                progressed = True
+                break
+            if len(selected) >= target:
+                break
+        if not progressed:
+            break
+
+    # predicate diversity is a preference, not a reason to underfill the target
+    for fact in deferred:
+        if len(selected) >= target:
+            break
+        selected.append(fact)
+
+    # if section bucketing produced nothing useful, fall back to even sampling by offset
+    if not selected:
+        facts = sorted(semantic.facts, key=lambda f: f.source_spans[0].start_char if f.source_spans else 0)
+        step = max(1, len(facts) // max(1, target))
+        selected = facts[::step][:target]
+    return selected
+
+
+def _evidence_sentences(
+    passage_text: str, facts: list[Fact]
+) -> list[dict[str, Any]]:
+    refs = sentence_index(passage_text)
+    wanted: set[str] = set()
+    for fact in facts:
+        for span in fact.source_spans:
+            wanted.add(span.sentence_id)
+    return [
+        {"sentence_id": r.sentence_id, "text": r.text}
+        for r in refs
+        if r.sentence_id in wanted
+    ]
+
+
 def select_claims(
     llm: LlmClient,
     cfg: Config,
     passage_text: str,
     semantic: SemanticRepresentation,
     candidate_id: str | None = None,
+    sections: list[PassageSection] | None = None,
 ) -> list[Claim]:
+    candidate_facts = choose_claim_facts(semantic, cfg, sections)
+    evidence_sentences = _evidence_sentences(passage_text, candidate_facts)
+    if not evidence_sentences:
+        raise StageError("claims_insufficient", "no evidence sentences for candidate facts", {})
+
     result = llm.structured(
         "claims",
         {
-            "passage_json": json.dumps(sentences_for_prompt(passage_text), indent=2),
+            "passage_json": json.dumps(evidence_sentences, indent=2),
             "facts_json": json.dumps(
                 [
                     {
@@ -102,13 +191,16 @@ def select_claims(
                         "predicate": f.predicate,
                         "object": f.object,
                         "qualifiers": f.qualifiers,
+                        "section_id": f.section_id,
                     }
-                    for f in semantic.facts
+                    for f in candidate_facts
                 ],
                 indent=2,
             ),
+            "target_claims": cfg.claims.target_claims_per_document,
             "min_claims": cfg.claims.min_claims_per_family,
             "max_claims": cfg.claims.max_claims_per_family,
+            "min_sections": cfg.claims.min_distinct_sections,
         },
         _ClaimsPayload,
         cfg.llm.claims,
@@ -142,6 +234,14 @@ def select_claims(
         ):
             rejected.append({"claim": text, "reason": "duplicate of another claim"})
             continue
+        section_ids = sorted(
+            {
+                sec.section_id
+                for span in spans
+                for sec in (sections or [])
+                if sec.start_char <= span.start_char < sec.end_char
+            }
+        )
         accepted.append(
             Claim(
                 claim_id="",
@@ -151,6 +251,7 @@ def select_claims(
                 claim_type=(raw.claim_type or "ENTITY_RELATION").upper(),
                 difficulty=(raw.difficulty or "medium").lower(),
                 intent=(raw.intent or "what").lower(),
+                section_ids=section_ids,
             )
         )
 
@@ -166,12 +267,24 @@ def select_claims(
     for c in accepted:
         buckets.setdefault(c.claim_type, []).append(c)
     selected: list[Claim] = []
-    while len(selected) < cfg.claims.max_claims_per_family and any(buckets.values()):
+    while len(selected) < cfg.claims.target_claims_per_document and any(buckets.values()):
         for key in sorted(buckets):
-            if buckets[key] and len(selected) < cfg.claims.max_claims_per_family:
+            if buckets[key] and len(selected) < cfg.claims.target_claims_per_document:
                 selected.append(buckets[key].pop(0))
     for i, claim in enumerate(selected, start=1):
         claim.claim_id = f"C{i}"
+
+    # Section spread is a construction property: a long document should not yield all
+    # claims from one paragraph. Only enforce it when sectioning is available.
+    if sections:
+        distinct = {sid for c in selected for sid in c.section_ids}
+        needed = min(cfg.claims.min_distinct_sections, len(sections))
+        if len(distinct) < needed:
+            raise StageError(
+                "claims_insufficient",
+                f"claims cover {len(distinct)} sections (need {needed})",
+                {"claims": [c.claim_id for c in selected], "sections": sorted(distinct)},
+            )
     return selected
 
 

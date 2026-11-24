@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from tristate.editor import create_variant
+from tristate.editor import claim_mentions, create_variant
 from tristate.errors import StageError
 from tristate.schema import Claim, SemanticRepresentation, Span
 
@@ -61,6 +61,25 @@ def _patch(op, sentence, original, replacement, claims):
     }
 
 
+def test_claim_mentions_finds_restatements_outside_evidence():
+    text = (
+        "The Kestrel program was established at Halden Labs in 2019. "
+        "The programme later moved to a second site. "
+        "By 2021 the Kestrel program at Halden Labs supported 52 sensors. "
+        "Funding came from a regional council."
+    )
+    claim = Claim(
+        claim_id="C1",
+        claim_text="The Kestrel program began at Halden Labs in 2019.",
+        evidence_spans=[Span(sentence_id="S1", start_char=0, end_char=5, text="The K")],
+    )
+    mentions = claim_mentions(text, claim)
+    ids = [m["sentence_id"] for m in mentions]
+    assert "S1" in ids
+    assert "S3" in ids  # restates program + Halden Labs, must be edited too
+    assert next(m for m in mentions if m["sentence_id"] == "S1")["required"] is True
+
+
 def test_supported_without_patches_keeps_base():
     client = FakeEditor([_plan()])
     out = create_variant(client, _cfg(), "SUPPORTED", BASE, _claims(), SemanticRepresentation(summary="x"))
@@ -115,7 +134,7 @@ def test_unsupported_rejects_value_mutation(cfg):
         _plan(_patch("NUMERICAL_MUTATION", "S1", "2012", "2008", ["C1"]),
               _patch("DELETE_SPAN", "S2", " and was designed primarily for embedded applications", "", ["C2"])),
         _plan(
-            _patch("REPLACE_CLAUSE", "S1", BASE.split(".")[0] + ".", "Orion is a tool with a small team.", ["C1"]),
+            _patch("REPLACE_CLAUSE", "S1", "The Orion language was developed by Alice Brown in 2012.", "Orion is a tool with a small team.", ["C1", "C2"]),
             _patch("DELETE_SPAN", "S2", " and was designed primarily for embedded applications", "", ["C2"]),
         ),
     ])

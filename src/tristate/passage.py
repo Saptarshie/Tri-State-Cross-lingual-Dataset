@@ -74,6 +74,8 @@ def generate_passage(
                 "source_excerpt": source_excerpt or "(none)",
                 "token_min": blueprint.target_length_tokens[0],
                 "token_max": blueprint.target_length_tokens[1],
+                "word_min": int(blueprint.target_length_tokens[0] / 0.75),
+                "word_max": int(blueprint.target_length_tokens[1] / 0.75),
                 "max_facts": min(6, blueprint.target_fact_count + 1),
                 "target_fact_count": blueprint.target_fact_count,
                 "genre": blueprint.genre,

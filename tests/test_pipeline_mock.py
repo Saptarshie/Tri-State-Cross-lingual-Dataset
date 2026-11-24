@@ -5,6 +5,7 @@ import json
 from tristate.config import load_config
 from tristate.pipeline import Pipeline
 from tristate.schema import Family, LABELS
+from tristate.util import approx_tokens
 
 
 def _run(cfg, limit=1, topic="Technology", **kw):
@@ -113,10 +114,10 @@ def test_graph_diff_extraction_failure_is_advisory(cfg, monkeypatch):
 
     original = pl.extract_semantics
 
-    def fake_extract(llm, cfg_, text, candidate_id=None, stage="extract", feedback=""):
+    def fake_extract(llm, cfg_, text, candidate_id=None, stage="extract", feedback="", **kwargs):
         if stage.startswith("extract_"):
             raise StageError("extraction_insufficient", "forced graph-diff extraction failure")
-        return original(llm, cfg_, text, candidate_id=candidate_id, stage=stage, feedback=feedback)
+        return original(llm, cfg_, text, candidate_id=candidate_id, stage=stage, feedback=feedback, **kwargs)
 
     monkeypatch.setattr(pl, "extract_semantics", fake_extract)
     p, summary = _run(cfg)
@@ -128,6 +129,28 @@ def test_graph_diff_extraction_failure_is_advisory(cfg, monkeypatch):
         assert all(d["status"] == "unavailable" and d["ok"] is None for d in diffs.values())
         fam = Family.model_validate(p.store.load_family(p.store.list_families()[0]["family_id"]))
         assert all(v.graph_diff["status"] == "unavailable" for v in fam.variants.values())
+    finally:
+        p.close()
+
+
+def test_long_form_pipeline_writes_sectioned_document(cfg_long):
+    p = Pipeline(cfg_long, mock=True, log=lambda m: None)
+    try:
+        summary = p.run(limit=1, seed_topic="Technology", stop_after="passage")
+        assert summary.accepted == 0
+        rows = p.store.list_candidates()
+        cid = rows[0]["candidate_id"]
+        plan_raw = p.store.load_artifact(cid, "document_plan")
+        doc = p.store.load_artifact(cid, "passage")
+        assert plan_raw and doc
+        assert len(plan_raw["sections"]) >= cfg_long.passage.sections_min
+        assert len(doc["sections"]) == len(plan_raw["sections"])
+        text = doc["text"]
+        assert approx_tokens(text) >= cfg_long.passage.target_tokens_min * cfg_long.passage.min_document_ratio
+        for sec in doc["sections"]:
+            assert text[sec["start_char"]:sec["end_char"]]
+            assert sec["token_count"] > 0
+        assert doc["meta"]["tokens"] == approx_tokens(text)
     finally:
         p.close()
 

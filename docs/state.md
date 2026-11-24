@@ -2,7 +2,7 @@
 
 Snapshot of what exists, what was measured, and what is next. Update after every substantive run.
 
-Last updated: 2026-11-24 18:05 IST (after export `pilot-02`).
+Last updated: 2026-11-25 02:40 IST (long-form generator verified; `pilot-03-longform` exported).
 
 ---
 
@@ -14,7 +14,7 @@ Milestones 0–3 of the objective are implemented and exercised against the live
 |---|---|
 | package, config, schema, store | complete |
 | topic graph + coverage scheduler | complete (LLM expansion, local corpus ingestion) |
-| blueprint → passage → extraction → claims | complete, real-provider verified |
+| blueprint → document plan → sections → extraction → claims | complete, real-provider verified (short and 3k-token long-form) |
 | coordinated tri-state editing + bounded repair | complete |
 | independent validation + deterministic gates | complete (second validator, disagreement queue) |
 | graph diff | implemented, advisory (`require_graph_diff: false`) |
@@ -33,17 +33,25 @@ families are immutable; quarantined candidates keep their workdir and reasons.
 - Provider `https://api.commandcode.ai/provider/v1`, key in `.env` (never logged).
 - `LLM_MAX_TOKENS=64000` from `.env`, applied to every stage; raw request artefacts confirm
   `max_tokens: 64000` and `finish_reason: stop`.
-- Models: deepseek-v4.1-flash (blueprint, passage, editor), mimo-v2.6-flash (extraction, claims,
-  second validator), gemini-3.8-flash (primary validator).
+- Models: **all stages `deepseek/deepseek-v4.1-flash`** (operator changed every stage; this removes
+  the cross-family separation the validator design preferred — see limitations).
 - Embeddings: local Ollama `embeddinggemma` (768-d), cached under `data/embeddings/`.
-- Tests: `121 passed` (offline); `ruff check --select F,E9` clean.
+- Tests: `129 passed` (offline); `ruff check --select F,E9` clean.
+- Base-document length: configurable (`passage.target_tokens_*`), default 2,000–4,000; the
+  pilot-02 export predates this and is the short-passage regime.
 
 Note: every command must run with `env -u PYTHONPATH` on this host (foreign `PYTHONPATH` shadows
 the project's packages).
 
 ---
 
-## 3. Dataset inventory (`pilot-02`)
+## 3. Dataset inventory (`pilot-02`, short-passage regime)
+
+> `pilot-02` is retained as the 130-token pilot. The current generator defaults to 2,000–4,000
+> token documents; its first successful long-form export is `pilot-03-longform`
+> (`data-v3/exports/`): 2 families / 6 variants / 7 claims, base mean 3,169 tokens, 5 sections,
+> `manifest.problems: []`, all `train`. It is deliberately small (one topic group) and is not a
+> quality benchmark; it proves the long-form path end to end.
 
 Exported to `data/exports/pilot-02/` (immutable copy: `families.jsonl`, `variants.jsonl`,
 `claims.jsonl`, `manifest.json`, `splits.json`, `README.md`).
@@ -105,6 +113,33 @@ ceiling. Proved the vertical slice; one family (`FAM_000001`) is in the pilot ex
 - 26 calls · 30,002 prompt · 36,275 completion · **$0.0144** · 291 s.
 - Confirms resume reuses successful stage artefacts and only re-runs the remainder.
 
+### Run D — first long-form run, 2k–4k targets (20:48–21:16, failed)
+
+- Passage became a real document: 5 sections, ~3.1k tokens per base, ~45–60 s per section on
+  `deepseek-v4.1-flash`.
+- Both candidates were quarantined `family_rejected` after repair rounds:
+  UNSUPPORTED still entailed a claim restated in another section; CONTRADICTED returned
+  `UNCERTAIN` because one sentence carried the original value and another the mutated one.
+- 99 calls · 634k prompt · 341k completion · **$0.1724** · 0 accepted.
+- This run is kept as the evidence for the mention-coverage + validator-rubric fixes; do not
+  export it.
+
+### Run E — long-form after mention coverage (21:17–21:33, succeeded)
+
+Fresh `data-v3`, `prompts/edit_plan.md` 3.1.0 (every restatement must be patched) and
+`validate/validate_second` 1.1.0 (no cross-sentence chaining; `UNCERTAIN` only for genuine
+internal contradiction).
+
+- **2 candidates processed, 2 accepted** (`FAM_000001`, `FAM_000002`), 0 quarantined.
+- Base documents: **3,049** and **3,288** tokens (mean 3,168), 5 sections each
+  (section sizes 542–696 tokens); variants 2,999–3,294 tokens.
+- 48 calls · 259,901 prompt · 186,680 completion · **$0.0887** · 975 s
+  (≈$0.044/family, ≈8 min/family at concurrency 3).
+- One CONTRADICTED repair round was needed (`C2/C3 expected CONTRADICTED, got NEUTRAL`);
+  the repaired variant validated. UNSUPPORTED passed first validation for both candidates.
+- Exported as **`pilot-03-longform`**: 2 families / 6 variants / 7 claims, 2 per label,
+  all `train`; `manifest.problems: []`.
+
 ---
 
 ## 5. Quality observations
@@ -129,6 +164,15 @@ ceiling. Proved the vertical slice; one family (`FAM_000001`) is in the pilot ex
 6. **Quarantine is doing its job.** One candidate produced only one atomic claim, another two
    hit the pre-64k truncation. Both are recorded with workdirs, not silently dropped.
 7. **Echo/meta language** is screened deterministically and did not appear in accepted variants.
+8. **Long-form path now accepts (2/2), but only after mention coverage.** The first long-form run
+   (Run D) failed exactly on cross-section restatements; with `claim_mentions()` and the stricter
+   validator rubric, Run E accepted both. Claims per 3k document were 3–4 (target 4), i.e. roughly
+   one claim per 800–1,000 tokens — raise `target_claims_per_document` if the research design needs
+   denser claim coverage.
+9. **All stages now run on one model family** (`deepseek-v4.1-flash`). The independent-validator
+   separation is structural only (separate prompts, hidden intended label, second validator on
+   failure/low confidence), not cross-family. Restore a different validator model before making
+   claims about validator independence.
 
 Spot review of `FAM_000003`, `FAM_000005`, `FAM_000008`, `FAM_000015`: claims are atomic and
 single-proposition; CONTRADICTED variants change the exact value or relation a claim depends on;
@@ -141,9 +185,10 @@ must stay structure-aware.
 
 ## 6. Known gaps and next steps (priority order)
 
-1. **Human-audited per-class precision.** Sample ~30 variants per label, blind to construction,
-   and record adjudications. This is the only way to state label precision. The flag queue exists
-   (`quality.human_verified`, `human_audit_flags`), but there is no annotation UI.
+1. **Human-audited per-class precision.** Sample ~30 variants per label (short and long-form
+   separately), blind to construction, and record adjudications. This is the only way to state
+   label precision. The flag queue exists (`quality.human_verified`, `human_audit_flags`), but
+   there is no annotation UI.
 2. **Graph-diff calibration.** Compare extraction on a small hand-checked subset, then either
    promote it to a gate with a calibrated threshold or demote it to a pure diagnostic and say so.
 3. **Prove the split under scale.** Generate ≥100 families or set a fresh split salt so
@@ -172,7 +217,7 @@ must stay structure-aware.
 | pilot report | `docs/reports/pilot-02-report.md` |
 | shortcut audit | `docs/reports/pilot-02-audit.json` |
 | accepted records | `data/families/FAM_*.json` |
-| exported dataset | `data/exports/pilot-02/` |
+| exported dataset | `data/exports/pilot-02/` (short), `data-v3/exports/pilot-03-longform/` (3k docs) |
 | quarantine diagnostics | `data/quarantine/` |
 | raw provider calls | `data/raw/<run_id>/<stage>/` |
 | state database | `data/state/state.db` |

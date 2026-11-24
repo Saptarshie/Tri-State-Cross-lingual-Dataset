@@ -31,6 +31,8 @@ from .util import read_jsonl
 STAGE_ALIASES = {
     "blueprint": "blueprint",
     "blueprints": "blueprint",
+    "document_plan": "document_plan",
+    "plan": "document_plan",
     "passage": "passage",
     "passages": "passage",
     "extract": "extract",

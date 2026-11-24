@@ -1,13 +1,15 @@
 ---
-version: 1.1.0
+version: 1.2.0
 stage: extract
-description: Extract a fact graph with exact evidence anchors from a passage.
+description: Extract a fact graph with exact evidence anchors from a passage or excerpt.
 ---
 Extract the factual structure of the passage below. Work only from the passage text.
 
-Every sentence is listed with an ID. For every fact you extract, you must give the ID of
-the sentence that states it and quote the exact words that carry the fact. Quotes must be
-verbatim substrings of that sentence. Do not paraphrase inside "quote".
+The passage may be one excerpt of a larger document. Extract facts only from the text shown,
+and only facts that this text states. Every sentence is listed with an ID. For every fact you
+extract, you must give the ID of the sentence that states it and quote the exact words that
+carry the fact. Quotes must be verbatim substrings of that sentence. Do not paraphrase inside
+"quote". Do not infer facts from surrounding context that is not shown.
 
 PASSAGE:
 {{passage_json}}

@@ -30,6 +30,7 @@ from .ids import (
     variant_id,
 )
 from .llm import BudgetExceeded, LlmClient, PermanentLlmError
+from .longform import generate_document, plan_document
 from .mock import MockClient
 from .novelty import NoveltyService
 from .passage import generate_passage
@@ -39,10 +40,12 @@ from .schema import (
     Blueprint,
     BlueprintCandidate,
     Claim,
+    DocumentPlan,
     EditLog,
     Family,
     GenerationMeta,
     PassageRecord,
+    PassageSection,
     Quality,
     SemanticRepresentation,
     SourceRef,
@@ -345,26 +348,83 @@ class Pipeline:
             if stop_after == "blueprint":
                 return self._partial(cid, started, stages)
 
-            # ---------------- passage ----------------
-            text = self._stage(
-                cid, "passage", "passage", self.cfg.llm.generator.name,
-                lambda: {"text": generate_passage(self.client, self.cfg, blueprint, candidate_id=cid)},
-            )["text"]
+            # ---------------- base artifact (short single call or long-form sections) ----------
+            short_mode = self.cfg.passage.target_tokens_max <= self.cfg.passage.single_call_below_tokens
+            document_plan: DocumentPlan | None = None
+            sections: list[PassageSection] = []
+
+            if short_mode:
+                text = self._stage(
+                    cid, "passage", "passage", self.cfg.llm.generator.name,
+                    lambda: {"text": generate_passage(self.client, self.cfg, blueprint, candidate_id=cid)},
+                )["text"]
+            else:
+                plan_doc = self._stage(
+                    cid, "document_plan", "document_plan", self.cfg.llm.generator.name,
+                    lambda: plan_document(self.client, self.cfg, blueprint, candidate_id=cid)
+                    .model_dump(mode="json"),
+                )
+                document_plan = DocumentPlan.model_validate(plan_doc)
+                if stop_after == "document_plan":
+                    stages.append("document_plan")
+                    return self._partial(cid, started, stages)
+
+                section_prompt_version = self.prompts.get("section").full_version
+
+                def load_section(key: str) -> dict[str, Any] | None:
+                    return self.store.load_artifact(cid, f"section_{key}")
+
+                def save_section(key: str, payload: dict[str, Any]) -> None:
+                    self.store.save_artifact(cid, f"section_{key}", payload)
+
+                def do_document() -> dict[str, Any]:
+                    doc_text, doc_sections, doc_meta = generate_document(
+                        self.client,
+                        self.cfg,
+                        blueprint,
+                        document_plan,
+                        candidate_id=cid,
+                        prompt_version=section_prompt_version,
+                        load_section=load_section,
+                        save_section=save_section,
+                        log=self.log,
+                    )
+                    return {
+                        "text": doc_text,
+                        "sections": [s.model_dump(mode="json") for s in doc_sections],
+                        "meta": doc_meta,
+                        "document_plan_id": document_plan.plan_id,
+                    }
+
+                doc = self._stage(
+                    cid, "passage", "section", self.cfg.llm.generator.name, do_document
+                )
+                text = doc["text"]
+                sections = [PassageSection.model_validate(s) for s in doc.get("sections", [])]
+                if document_plan:
+                    stages.append("document_plan")
             stages.append("passage")
             if stop_after == "passage":
                 return self._partial(cid, started, stages)
 
-            # ---------------- semantic extraction ----------------
+            # ---------------- semantic extraction (windowed for long documents) -------------
             def do_extract() -> SemanticRepresentation:
+                kwargs = {
+                    "candidate_id": cid,
+                    "window_tokens": self.cfg.extraction.window_tokens,
+                    "max_windows": self.cfg.extraction.max_windows,
+                    "sections": sections or None,
+                }
                 try:
-                    return extract_semantics(self.client, self.cfg, text, candidate_id=cid)
+                    return extract_semantics(self.client, self.cfg, text, **kwargs)
                 except StageError as exc:
                     if exc.code != "extraction_insufficient":
                         raise
                     self.log(f"{cid} extract retry with feedback: {exc}")
                     return extract_semantics(
-                        self.client, self.cfg, text, candidate_id=cid,
+                        self.client, self.cfg, text,
                         feedback=f"Previous extraction was rejected: {exc}. Quote exact substrings from the listed sentences.",
+                        **kwargs,
                     )
 
             semantic = SemanticRepresentation.model_validate(
@@ -377,7 +437,10 @@ class Pipeline:
             # ---------------- claims ----------------
             claims_raw = self._stage(
                 cid, "claims", "claims", self.cfg.llm.claims.name,
-                lambda: [c.model_dump(mode="json") for c in select_claims(self.client, self.cfg, text, semantic, cid)],
+                lambda: [
+                    c.model_dump(mode="json")
+                    for c in select_claims(self.client, self.cfg, text, semantic, cid, sections=sections or None)
+                ],
             )
             claims = [Claim.model_validate(c) for c in claims_raw]
             stages.append("claims")
@@ -500,7 +563,9 @@ class Pipeline:
 
             # ---------------- build + accept ----------------
             family = self._build_family(cid, cand, blueprint, text, semantic, claims,
-                                        variant_state, validations, novelty_rows, graph_diffs, stats_before)
+                                        variant_state, validations, novelty_rows, graph_diffs, stats_before,
+                                        sections=sections,
+                                        document_plan_id=document_plan.plan_id if document_plan else None)
             path = self._accept(cid, cand, family, semantic)
             stages.append("accept")
             self.log(f"{cid} ACCEPTED as {family.family_id} ({family.split}) -> {path.name}")
@@ -614,6 +679,8 @@ class Pipeline:
         novelty_rows: dict[str, dict],
         graph_diffs: dict[str, dict],
         stats_before: dict[str, Any],
+        sections: list[PassageSection] | None = None,
+        document_plan_id: str | None = None,
     ) -> Family:
         seq = self.store.next_counter("passage")
         with self._lock:
@@ -680,12 +747,14 @@ class Pipeline:
             base_passage=PassageRecord(
                 passage_id=passage_id_from_seq(seq),
                 document_id=cand.document_id,
+                document_plan_id=document_plan_id,
                 text=base_text,
                 genre=blueprint.genre,
                 tone=blueprint.tone,
                 structure=blueprint.structure,
                 complexity=blueprint.complexity,
                 source_type=cand.source_type,
+                sections=sections or [],
             ),
             semantic_representation=semantic,
             claim_set=claims,

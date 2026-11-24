@@ -87,6 +87,7 @@ class Fact(LlmModel):
     qualifiers: dict[str, Any] = Field(default_factory=dict)
     source_spans: list[Span] = Field(default_factory=list)
     confidence: float = 0.8
+    section_id: str | None = None
 
     @property
     def triple(self) -> tuple[str, str, str]:
@@ -145,7 +146,8 @@ class Blueprint(LlmModel):
     structure: str = "paragraph"
     complexity: str = "intermediate"
     target_fact_count: int = 4
-    target_length_tokens: list[int] = Field(default_factory=lambda: [110, 220])
+    target_length_tokens: list[int] = Field(default_factory=lambda: [2000, 4000])
+    target_sections: int = 4
     novelty_report: dict[str, Any] = Field(default_factory=dict)
     created_at: str = Field(default_factory=utcnow)
 
@@ -165,6 +167,47 @@ class Blueprint(LlmModel):
 
 
 # --------------------------------------------------------------------------- #
+# Document plan (long-form base artifact)
+# --------------------------------------------------------------------------- #
+
+
+class SectionPlan(LlmModel):
+    section_id: str
+    title: str
+    purpose: str
+    target_tokens: int
+    key_points: list[str] = Field(default_factory=list)
+    entities: list[str] = Field(default_factory=list)
+    relations: list[str] = Field(default_factory=list)
+
+
+class DocumentPlan(LlmModel):
+    plan_id: str = ""
+    throughline: str = ""
+    sections: list[SectionPlan] = Field(default_factory=list)
+    total_target_tokens: int = 0
+    created_at: str = Field(default_factory=utcnow)
+
+    @model_validator(mode="after")
+    def _sections(self) -> "DocumentPlan":
+        ids = [s.section_id for s in self.sections]
+        if len(set(ids)) != len(ids):
+            raise ValueError("duplicate section ids in document plan")
+        if not self.total_target_tokens:
+            self.total_target_tokens = sum(s.target_tokens for s in self.sections)
+        return self
+
+
+class PassageSection(StrictModel):
+    section_id: str
+    title: str = ""
+    start_char: int
+    end_char: int
+    token_count: int
+    checksum: str = ""
+
+
+# --------------------------------------------------------------------------- #
 # Claims
 # --------------------------------------------------------------------------- #
 
@@ -177,6 +220,7 @@ class Claim(LlmModel):
     claim_type: str = "ENTITY_RELATION"
     difficulty: str = "medium"
     intent: str = "what"
+    section_ids: list[str] = Field(default_factory=list)
 
     @field_validator("claim_text")
     @classmethod
@@ -316,6 +360,7 @@ class ValidationResult(StrictModel):
 class PassageRecord(StrictModel):
     passage_id: str
     document_id: str | None = None
+    document_plan_id: str | None = None
     text: str
     genre: str
     tone: str
@@ -325,6 +370,7 @@ class PassageRecord(StrictModel):
     sentence_count: int = 0
     checksum: str = ""
     source_type: str = "synthetic"
+    sections: list[PassageSection] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _fill(self) -> "PassageRecord":

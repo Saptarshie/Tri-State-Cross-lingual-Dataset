@@ -14,8 +14,18 @@ from .config import Config
 from .embeddings import get_embedder
 from .hnsw import HnswIndex
 from .schema import Family
+from .spans import sentence_index
 from .store import Store
-from .util import atomic_write_json, jaccard, read_json, sha256_text, truncate, utcnow, word_ngrams
+from .util import (
+    approx_tokens,
+    atomic_write_json,
+    jaccard,
+    read_json,
+    sha256_text,
+    truncate,
+    utcnow,
+    word_ngrams,
+)
 
 NAMESPACES = ("blueprint", "passage", "fact_claim", "edit_signature")
 
@@ -71,6 +81,24 @@ class NoveltyService:
 
     def _embed(self, text: str):
         return self.embedder.encode(text)
+
+    def _chunks(self, text: str) -> list[tuple[int, int, str]]:
+        """Sentence-aligned chunks sized for the embedding model's context."""
+        target = max(200, int(self.cfg.hnsw.passage_chunk_tokens))
+        refs = sentence_index(text)
+        if not refs:
+            return [(0, len(text), text)]
+        out: list[tuple[int, int, str]] = []
+        start = refs[0].start_char
+        tokens = 0
+        for ref in refs:
+            if tokens >= target:
+                out.append((start, ref.start_char, text[start:ref.start_char]))
+                start = ref.start_char
+                tokens = 0
+            tokens += approx_tokens(ref.text)
+        out.append((start, len(text), text[start:]))
+        return [(s, e, c) for s, e, c in out if c.strip()]
 
     # ------------------------------------------------------------------ #
     # Pre-generation feedback
@@ -146,40 +174,67 @@ class NoveltyService:
     # Post-generation novelty check
     # ------------------------------------------------------------------ #
     def post_generation_check(self, text: str, split: str = "candidate") -> dict[str, Any]:
-        vec = self._embed(text)
-        hits = self.indexes["passage"].search(vec, k=5, filter_fn=self._not_test)
-        nearest = hits[0] if hits else None
+        chunks = self._chunks(text)
+        best_score = 0.0
+        best_hit = None
+        best_chunk_text = ""
+        best_hit_text = ""
+        exact = False
+        near_chunks = 0
+        for start, end, chunk in chunks:
+            hits = self.indexes["passage"].search(self._embed(chunk), k=5, filter_fn=self._not_test)
+            for hit in hits:
+                if hit.score > best_score:
+                    best_score = hit.score
+                    best_hit = hit
+                    best_chunk_text = chunk
+                    best_hit_text = self._hit_text(hit.meta) or ""
+                if hit.meta.get("chunk_hash") == sha256_text(chunk.strip()):
+                    exact = True
+            if hits and hits[0].score >= self.cfg.hnsw.near_duplicate_cosine:
+                near_chunks += 1
+
         ngram_sim = 0.0
-        exact = any(
-            h.meta.get("text_hash") == sha256_text(text.strip()) for h in hits
-        )
-        if nearest:
-            other_text = self._variant_text(nearest.meta)
-            if other_text:
-                ngram_sim = jaccard(word_ngrams(text, 2), word_ngrams(other_text, 2))
-        cosine_max = max([h.score for h in hits] + [0.0])
+        if best_hit and best_chunk_text and best_hit_text:
+            ngram_sim = jaccard(word_ngrams(best_chunk_text, 2), word_ngrams(best_hit_text, 2))
+        fraction = near_chunks / max(1, len(chunks))
         near_dup = (
-            cosine_max >= self.cfg.hnsw.near_duplicate_cosine
+            best_score >= self.cfg.hnsw.near_duplicate_cosine
             or ngram_sim >= self.cfg.hnsw.near_duplicate_jaccard
             or exact
+            or (len(chunks) >= 2 and fraction >= self.cfg.hnsw.near_duplicate_chunk_fraction)
         )
         return {
-            "max_cosine": round(cosine_max, 4),
+            "chunks": len(chunks),
+            "max_cosine": round(best_score, 4),
             "nearest": (
-                {"family_id": nearest.meta.get("family_id"),
-                 "variant_id": nearest.meta.get("variant_id"),
-                 "label": nearest.meta.get("label"),
-                 "score": round(nearest.score, 4)}
-                if nearest else None
+                {"family_id": best_hit.meta.get("family_id"),
+                 "variant_id": best_hit.meta.get("variant_id"),
+                 "label": best_hit.meta.get("label"),
+                 "score": round(best_hit.score, 4)}
+                if best_hit else None
             ),
             "ngram_jaccard": round(ngram_sim, 4),
+            "near_duplicate_chunks": near_chunks,
+            "chunk_fraction": round(fraction, 4),
             "exact_duplicate": exact,
             "near_duplicate": near_dup,
             "thresholds": {
                 "cosine": self.cfg.hnsw.near_duplicate_cosine,
                 "jaccard": self.cfg.hnsw.near_duplicate_jaccard,
+                "chunk_fraction": self.cfg.hnsw.near_duplicate_chunk_fraction,
             },
         }
+
+    def _hit_text(self, meta: dict[str, Any]) -> str | None:
+        full = self._variant_text(meta)
+        if full is None:
+            return meta.get("excerpt")
+        start = meta.get("chunk_start")
+        end = meta.get("chunk_end")
+        if isinstance(start, int) and isinstance(end, int) and 0 <= start < end <= len(full):
+            return full[start:end]
+        return full
 
     def _variant_text(self, meta: dict[str, Any]) -> str | None:
         fid = meta.get("family_id")
@@ -217,30 +272,38 @@ class NoveltyService:
             self._embed(bp_text),
             {**common, "main_concept": family.blueprint.main_concept},
         )
+        def add_document(text: str, checksum: str, token_count: int, variant_id_: str,
+                         label: str, base: bool) -> None:
+            chunks = self._chunks(text)
+            for i, (start, end, chunk) in enumerate(chunks):
+                self.indexes["passage"].add(
+                    self._embed(chunk),
+                    {
+                        **common,
+                        "variant_id": variant_id_,
+                        "label": label,
+                        "text_hash": checksum,
+                        "chunk_hash": sha256_text(chunk.strip()),
+                        "chunk_index": i,
+                        "n_chunks": len(chunks),
+                        "chunk_start": start,
+                        "chunk_end": end,
+                        "token_count": approx_tokens(chunk),
+                        "doc_token_count": token_count,
+                        "excerpt": truncate(chunk, 280),
+                        "base": base,
+                    },
+                )
+
         for label, variant in family.variants.items():
-            self.indexes["passage"].add(
-                self._embed(variant.text),
-                {
-                    **common,
-                    "variant_id": variant.variant_id,
-                    "label": label,
-                    "text_hash": variant.checksum,
-                    "token_count": variant.token_count,
-                    "excerpt": truncate(variant.text, 280),
-                    "base": False,
-                },
+            add_document(
+                variant.text, variant.checksum, variant.token_count,
+                variant.variant_id, label, False,
             )
-        self.indexes["passage"].add(
-            self._embed(family.base_passage.text),
-            {
-                **common,
-                "variant_id": family.base_passage.passage_id,
-                "label": "BASE",
-                "text_hash": family.base_passage.checksum,
-                "token_count": family.base_passage.token_count,
-                "excerpt": truncate(family.base_passage.text, 280),
-                "base": True,
-            },
+        add_document(
+            family.base_passage.text, family.base_passage.checksum,
+            family.base_passage.token_count, family.base_passage.passage_id,
+            "BASE", True,
         )
 
         triples = "; ".join(

@@ -1,18 +1,32 @@
 ---
-version: 1.0.0
+version: 3.1.0
 stage: edit_plan
-description: Plan coordinated localized patches for one target variant.
+description: Plan coordinated localized patches for one target variant of a document.
 ---
-You are a careful editor. You will modify ONE passage so that a FIXED set of claims ends
-up in a REQUIRED relation to it. The claim set never changes. Only the passage changes.
+You are a careful editor. You will modify ONE document so that a FIXED set of claims ends
+up in a REQUIRED relation to it. The claim set never changes. Only the document changes.
 
 TARGET RELATION FOR EVERY CLAIM: {{label}} — {{label_objective}}
 
-BASE PASSAGE (sentences are numbered; this exact text will be patched):
+DOCUMENT EXCERPTS (sentences are numbered; every patch target must be one of these):
 {{sentences_json}}
+
+Only the sentences relevant to the claims are shown. The rest of the document stays exactly
+as it is: never propose a patch for a sentence that is not listed, never refer to unseen
+text, and assume unlisted sentences neither establish nor contradict any claim.
 
 CLAIM SET (every one of these must reach the target relation):
 {{claims_json}}
+
+Each claim lists `mentions`: sentences that plausibly state that claim's facts, not just the
+primary evidence sentence. A long document often restates the same fact in an introduction, a
+body section and a conclusion. EVERY listed mention must be patched for CONTRADICTED and
+UNSUPPORTED, and all of them must reach the same target relation:
+- CONTRADICTED: change every mention to the SAME incompatible alternative. If one sentence says
+  38 and another still says 52, the document becomes self-contradictory and is rejected.
+- UNSUPPORTED: remove/defuse the claiming information in EVERY mention. If any mention still
+  states it, the document still establishes the claim.
+- SUPPORTED: leave the mentions intact.
 
 PRIOR ATTEMPT FEEDBACK (empty on the first attempt):
 {{feedback}}
@@ -22,12 +36,15 @@ ALLOWED OPERATIONS
 
 HOW TO EDIT
 - Produce the smallest set of localized patches that changes every claim's relation.
-- "original_text" must be copied VERBATIM from one sentence above. It must not span
+- "original_text" must be copied VERBATIM from one of the numbered excerpts. It must not span
   sentences and must appear exactly once in that sentence.
 - Give the sentence ID you are editing.
 - A patch replaces "original_text" with "replacement_text". For a deletion, set
   "replacement_text" to "".
 - Every claim ID must appear in at least one patch's "affected_claim_ids".
+- For CONTRADICTED and UNSUPPORTED, every `mentions` entry must be the target of at least one
+  patch that lists that claim ID.
+- Every `mentions` entry has a `sentence_id`; use exactly those IDs. Do not invent sentence IDs.
 - Do not rewrite the whole passage. Do not reorder sentences. Do not add new sentences
   unless replacing an entire clause/sentence is unavoidable.
 - Keep the result grammatical and natural. Repair broken grammar inside the same patch.

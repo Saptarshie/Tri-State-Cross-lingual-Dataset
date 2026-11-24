@@ -6,7 +6,7 @@ Version: `pilot-02` · Language: English (`en`) · Schema: `0.1.0` · Built: 202
 
 ## 1. What this dataset is
 
-A set of **families**. Each family is one short passage plus a fixed set of 2–5 atomic claims,
+A set of **families**. Each family is one base document plus a fixed set of 2–5 atomic claims,
 reproduced in three variants whose relationship to the claim set is known by construction:
 
 | Label | Relation of passage to every claim |
@@ -32,7 +32,7 @@ synthetic and deliberately counterfactual; fictional entities and numbers are th
 | variants | 45 |
 | claims | 54 |
 | claims per family | mean 3.6 (min 2, max 5) |
-| passage length | mean 128.8 tokens (72–169) |
+| passage length | mean 128.8 tokens (72–169) — **short pilot version**; the generator now defaults to 2,000–4,000-token documents (`passage.target_tokens_min/max`) |
 | splits | train 15, dev 0, test 0 |
 | labels | 15 SUPPORTED, 15 CONTRADICTED, 15 UNSUPPORTED |
 

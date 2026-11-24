@@ -18,7 +18,7 @@ Passages may be synthetic or counterfactual: real-world truth is explicitly **no
 ## Status
 
 - Milestone 0–3 vertical slice implemented and exercised end to end.
-- `pytest`: 121 tests passing (unit, semantic-contract, editor, novelty, corpus, audit, end-to-end with mocked workers).
+- `pytest`: 129 tests passing (unit, semantic-contract, editor, novelty, corpus, audit, long-form assembly, end-to-end with mocked workers).
 - Real-provider pilot: families generated, validated and exported (see `docs/state.md`).
 - Planned next: corpus expansion, richer editing patterns, larger scale-out
   (see `docs/state.md`).
@@ -51,6 +51,27 @@ env -u PYTHONPATH .venv/Scripts/python.exe -m tristate export
 > `env -u PYTHONPATH` is only needed on hosts whose shell exports a foreign `PYTHONPATH`
 > (this Windows/Hermes host does). In a normal activated venv, drop it.
 
+### Document length and claims per document
+
+Both are config dials; no prompt editing is required:
+
+```yaml
+# configs/default.yaml
+passage:
+  target_tokens_min: 2000      # default: 2k-4k tokens per base document
+  target_tokens_max: 4000
+  section_tokens_min: 450
+  section_tokens_max: 900
+  max_sections: 24             # 10k-15k targets derive ~15-22 sections
+claims:
+  target_claims_per_document: 4
+  min_claims_per_family: 2
+  max_claims_per_family: 12
+```
+
+The document is written section by section (resumable per section), then assembled; the compact
+blueprint is a soft direction and a novelty constraint, not a length ceiling.
+
 ## Commands
 
 | Command | Purpose |
@@ -58,7 +79,7 @@ env -u PYTHONPATH .venv/Scripts/python.exe -m tristate export
 | `config-check` | config hash, prompt versions, API + embedder probe (no secrets printed) |
 | `topics seed/expand/select/report` | topic graph and coverage-aware sampling |
 | `corpus ingest --path …` | local seed documents → segmented passage candidates |
-| `run --limit N [--topic X] [--expand] [--stop-after STAGE]` | generate families end to end |
+| `run --limit N [--topic X] [--expand] [--stop-after {blueprint,document_plan,passage,extract,claims,variants,validate}]` | generate families end to end |
 | `resume --limit N` | resume PENDING/FAILED candidates (idempotent) |
 | `stage {blueprint,passage,extract,claims,variants,validate}` | run one stage over candidates |
 | `index build/update/stats` | rebuild HNSW indexes from accepted families |

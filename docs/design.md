@@ -199,37 +199,97 @@ toward the least-used options reported by the novelty service. A novelty report 
 blueprints, overrepresented relations/entities, suggested style) is computed twice: a
 topic-level report before planning, and a plan-level report attached to the blueprint.
 
-### 6.3 Passage
+### 6.3 Document generation (length-configurable)
 
-One compact passage (target 80–300 tokens, band from the blueprint). Deterministic screening
-before acceptance:
+The base artifact is a **document**, not a paragraph. Length is a configuration dial, not a
+prompt constant:
 
-- token band ± tolerance; ≥2 sentences unless Q&A structure;
-- Latin-script ratio ≥ 0.97;
-- no label/task meta-language (`util.META_PATTERNS`);
-- no markdown/bullets in prose structures; no trailing colon; no repeated sentences;
-- one regeneration attempt with explicit feedback, then `StageError`.
+```yaml
+passage:
+  target_tokens_min: 2000      # default pilot band
+  target_tokens_max: 4000
+  sections_min: 3
+  sections_max: 8
+  section_tokens_min: 450
+  section_tokens_max: 900
+  max_sections: 24
+  single_call_below_tokens: 700  # <= this max -> legacy single-call path
+```
+
+`target_tokens_max <= single_call_below_tokens` keeps the legacy single-call path (used by the
+test suite). Otherwise generation is sectioned:
+
+1. **Blueprint** remains an abstract plan and is explicitly a *soft direction*: it fixes subject
+   and angle but requires room for added entities, sequences, measurements and consequences.
+   `target_fact_count` scales with document size (6–12) and blueprint length bounds come from
+   `passage.target_tokens_*`.
+2. **Document plan** (`prompts/document_plan.md` → `DocumentPlan`) fixes a throughline and a list
+   of `SectionPlan`s: id, title, purpose, target tokens, key points, expected entities/relations.
+   Section count is derived (`target_mean / section_mean`, clamped to
+   `sections_min..max_sections`); the plan is rejected if it falls outside
+   `sections_min..max(sections_max, derived)`.
+3. **Section writing** (`prompts/section.md`) is one call per section with the blueprint, the
+   throughline, the section spec, the covered-point list and the last
+   `section_context_chars` of prior text. Sections are independent artefacts
+   (`work/<candidate>/section_<key>.json`, keyed by plan + section + prompt version), so a crash
+   resumes without re-paying completed sections.
+4. **Screen and repair**: each section is checked for the token band (0.5–1.8× target), script
+   ratio, meta-language, markdown/bullets, trailing colon, sentence count, repeated sentences.
+   One repair attempt carries explicit feedback.
+5. **Assembly**: sections are joined with `\n\n`; offsets are verified to reconstruct each
+   section exactly; `PassageSection` records start/end/tokens/checksum. The assembled document is
+   screened against `target_tokens_min*min_document_ratio .. target_tokens_max*max_document_ratio`,
+   English/meta/repetition rules and 12-gram cross-section overlap
+   (`max_cross_section_overlap`). If it is short, the weakest section is expanded once.
+
+The abstract compact concept is therefore retained as a **novelty constraint**, not as a length
+target: the document extends it with new material instead of restating it.
+
+Declared `sections` are carried into the `PassageRecord` and family export, so claim/evidence
+section attribution survives into the dataset.
 
 ### 6.4 Extraction and claims
 
-Extraction returns 4–8 facts with a sentence ID and a verbatim quote. Quotes are resolved by
-`spans.resolve_quote` against the immutable passage: exact, then whitespace-tolerant, and only
-then whole-passage fallback. Facts without a resolvable span are dropped; fewer than two facts
-triggers one re-extraction with feedback.
+Extraction is whole-document for short texts and **windowed** for long ones:
+
+- `extraction.window_tokens` (default 1500, 0 = whole document) splits the document at sentence
+  boundaries; every window carries a global sentence-ID offset so quotes resolve against the full
+  base text;
+- `max_windows` caps calls; leftover windows are sampled deterministically, recorded in the
+  representation;
+- each fact gets `section_id` from its evidence span; this is what lets claims-per-document and
+  claim spread be enforced.
+
+Extraction returns facts with a sentence ID and a verbatim quote. Quotes are resolved by
+`spans.resolve_quote` against the immutable document: exact, then whitespace-tolerant, and only
+then whole-document fallback. Facts without a resolvable span are dropped; fewer than
+`extraction.min_facts` triggers one re-extraction with feedback.
 
 Claims are filtered deterministically before validation:
 
-- one sentence, ≤220 chars, no pronoun-led subject;
+- one sentence, ≤`claims.max_claim_chars`, no pronoun-led subject;
 - no compound proposition (`;`, `, and/but/while`, or two auxiliary verbs joined by “and”);
-- ≥60% of claim content tokens present in the passage;
+- ≥60% of claim content tokens present in the document;
 - mentions a known entity;
 - ≥1 resolvable evidence span;
 - near-duplicate of a sibling claim (bigram Jaccard > 0.8 or identical fact set) rejected.
 
-Surviving claims are selected round-robin by claim type, up to `max_claims_per_family`, then
-renumbered. An independent validator re-checks that the **base** passage entails every claim;
-failing claims are dropped (recorded), and if fewer than the minimum survive the candidate is
-quarantined rather than edited.
+Selection is configurable:
+
+```yaml
+claims:
+  min_claims_per_family: 2
+  max_claims_per_family: 12
+  target_claims_per_document: 4   # approximate count to request per document
+  min_distinct_sections: 2        # spread claims across the document
+```
+
+`choose_claim_facts` first fills one fact per section (round-robin over evidence spans), then
+balances claim types and fact confidence up to the target. The prompt receives the boundary
+numbers as literal strings (`{{min_claims}}`, `{{max_claims}}`, `{{target_claims}}`), so changing
+the count needs no prompt edit. Surviving claims are renumbered and an independent validator
+re-checks that the **base document** entails every claim; failing claims are dropped (recorded),
+and if fewer than the minimum survive the candidate is quarantined rather than edited.
 
 ---
 
@@ -252,8 +312,9 @@ The base text is never mutated; variants are new strings with their own checksum
 
 ### 7.2 Coordinated plan → apply → validate loop
 
-The editor sees the whole claim set, the numbered sentences and per-claim evidence. It must
-produce patches covering every claim ID. Allowed operations are label-specific:
+The editor sees the whole claim set, the numbered sentences, per-claim evidence **and every
+plausible mention of each claim**. It must produce patches covering every claim ID. Allowed
+operations are label-specific:
 
 | Label        | Allowed                                                                                |
 | ------------ | -------------------------------------------------------------------------------------- |
@@ -261,10 +322,19 @@ produce patches covering every claim ID. Allowed operations are label-specific:
 | CONTRADICTED | entity/number/time substitution, relation reversal, polarity, category, clause rewrite |
 | UNSUPPORTED  | delete span, neutral rewrite, clause replacement                                       |
 
-A plan is rejected before application if it leaves coverage gaps, references unknown claims,
-uses a forbidden operation, produces an unapplicable patch, or fails structural screening
-(length ratio 0.45–1.9, content overlap ≥0.25, script check, meta-language check, sentence
-presence). Feedback from each rejection is fed into the next attempt, within
+**Mention coverage.** A long document restates facts in the introduction, body and conclusion.
+Editing only the evidence sentence leaves the original statement in place; the validator then
+sees a document that says both 52 and 38 and returns `UNCERTAIN`, or one that still entails an
+"UNSUPPORTED" claim. `claim_mentions()` scans the document for sentences sharing the claim's
+content terms or numbers, marks evidence and high-overlap sentences `required`, and the planner
+receives them. For CONTRADICTED/UNSUPPORTED a plan is rejected until every required mention is a
+patch target, and the prompt requires the same replacement value in all of them. Unlisted
+sentences remain unchanged and are treated as neither establishing nor contradicting.
+
+A plan is rejected before application if it leaves coverage gaps, misses a required mention,
+references unknown claims, uses a forbidden operation, produces an unapplicable patch, or fails
+structural screening (length ratio 0.45–1.9, content overlap ≥0.25, script check, meta-language
+check, sentence presence). Feedback from each rejection is fed into the next attempt, within
 `1 + max_edit_repair_attempts` attempts. After family validation, failed variants get additional
 bounded repair rounds driven by the validator's structured failure report (all claims
 re-planned, not just the failing one).
@@ -360,12 +430,24 @@ random vectors; measured 1.0 at the current settings).
 Snapshots store vectors, metadata and parameters; the graph is rebuilt deterministically from
 insertion order on load, which keeps snapshots portable.
 
+**Chunked document indexing.** A 2k–15k-token document cannot be embedded as one vector: the
+local embedding model has a small context, so a single embedding would silently represent only
+the opening of the text. The passage namespace therefore stores **sentence-aligned chunks** of
+`passage_chunk_tokens` (default 1200) with `chunk_index`, `n_chunks`, `chunk_start`, `chunk_end`
+and a per-chunk `chunk_hash`; the document-level `text_hash` is repeated on every chunk.
+
+Post-generation novelty is computed per chunk: best cosine, exact chunk-hash match, and a
+near-duplicate chunk fraction (`near_duplicate_chunk_fraction`, default 0.5). A document is a
+near-duplicate if the best chunk passes the cosine/Jaccard thresholds, any chunk is an exact
+copy, or at least half its chunks individually match an indexed chunk. This is stricter than a
+best-chunk match and prevents "new document, copied sections" from passing.
+
 ### 9.3 Namespaces
 
 | Namespace        | Text embedded                                    | Metadata anchors                      |
 | ---------------- | ------------------------------------------------ | ------------------------------------- |
 | `blueprint`      | topic path, concept, subtopics, relations, genre | family, split, concept                |
-| `passage`        | each variant + base passage                      | variant ID, label, text hash, excerpt |
+| `passage`        | sentence-aligned document chunks (base+variant)  | variant ID, label, chunk offsets/hash |
 | `fact_claim`     | extracted triples + claim texts                  | family, claim/fact types              |
 | `edit_signature` | label + operation sequence                       | operations, family                    |
 
@@ -374,8 +456,8 @@ to steer generation (`hnsw.split_aware`). Stats (`index/stats.json`) count relat
 genres, tones, structures, topic paths and edit operations, and drive the pre-generation
 "underrepresented alternative" suggestions.
 
-Post-generation checks compare cosine and bigram Jaccard against the passage index. Near
-duplicates are quarantined by default (thresholds configurable); a high cosine alone is a
+Post-generation checks compare cosine and bigram Jaccard against the chunked passage index.
+Near duplicates are quarantined by default (thresholds configurable); a high cosine alone is a
 review signal, not a rejection.
 
 ---
@@ -441,15 +523,31 @@ overrides: `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` (generator/editor), `LLM_M
 `OLLAMA_BASE_URL`, `EMBED_MODEL`, `TRISTATE_DATA_DIR`, `TRISTATE_PROMPTS_DIR`. `.env` is read
 without overriding real environment variables, and is git-ignored.
 
-Important knobs: claim bounds and atomicity, variant length/overlap bounds, repair attempts,
-validator confidence and second-validator policy, HNSW M/ef/thresholds, near-duplicate
+Important knobs: `passage.target_tokens_*` (document length) and `sections_*`/`max_sections`
+(sectioning, derived count), `extraction.window_*`, `claims.target_claims_per_document` and
+`min_distinct_sections`, variant length/overlap bounds, repair attempts, validator confidence and
+second-validator policy, HNSW M/ef/thresholds and `passage_chunk_tokens`, near-duplicate
 thresholds, split fractions and salt, concurrency/retries/budget, per-stage models and costs.
+
+Length and count are set in config, not in prompts. `passage.target_tokens_min/max` is the whole
+document; the prompt receives the numbers as literal strings, and section count is computed. To
+change the document size, edit only these bounds (and raise `max_sections` if the derived count
+would exceed it):
+
+```yaml
+passage:
+  target_tokens_min: 10000
+  target_tokens_max: 15000
+  max_sections: 24        # 15k / ~675 mean section ~= 22
+claims:
+  target_claims_per_document: 12   # approximate; bounded by min/max
+```
 
 ---
 
 ## 14. Testing
 
-121 tests, no network:
+129 tests, no network:
 
 - utilities: sentence segmentation, hashing, script/meta checks, atomic IO;
 - IDs and schema invariants (three labels, unique claims, distinct accepted variants);

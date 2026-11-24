@@ -1,5 +1,5 @@
 ---
-version: 1.0.0
+version: 1.1.0
 stage: validate_second
 description: Second independent relation check with a different decomposition.
 ---
@@ -13,12 +13,15 @@ the claim's subject and relation. Quote the deciding words. If the passage never
 the subject, say so.
 
 STEP 2: assign each claim one relation using this rubric.
-- ENTAILED only if the passage, read literally, makes the claim true.
+- ENTAILED only if a single sentence (or an immediately adjacent paraphrase) states the
+  claim's specific entities, relation and value, read literally. Do not chain separate facts
+  from different sentences to construct the claim; if the specific value/entity/relation is
+  never stated in one place, it is NEUTRAL.
 - CONTRADICTED only if the passage makes the claim false by asserting an incompatible
   alternative. A missing statement, a different topic, a vague gesture, or "the passage
   does not say" is never a contradiction.
 - NEUTRAL if the passage neither makes the claim true nor false.
-- UNCERTAIN if the passage contradicts itself or the claim is unreadable.
+- UNCERTAIN only if the passage contradicts itself about the claim or the claim is unreadable.
 
 External facts are irrelevant. If the passage says a fictional company was founded in
 1998, then that is what the passage establishes, whatever the real world says. Never

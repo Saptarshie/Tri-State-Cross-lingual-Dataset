@@ -113,6 +113,55 @@ class MockClient:
             "key": self._passage_key(str(topic)),
         }
 
+    def _h_document_plan(self, v: dict[str, Any]) -> dict[str, Any]:
+        n = max(int(v.get("sections_min", 3)), min(int(v.get("sections_max", 8)), 4))
+        smin = int(v.get("section_tokens_min", 450))
+        smax = int(v.get("section_tokens_max", 900))
+        target = max(smin, min(smax, 300))
+        return {
+            "plan_id": "DP_mock",
+            "throughline": f"How {v.get('topic_path', 'the subject')} works in practice.",
+            "sections": [
+                {
+                    "section_id": f"S{i + 1}",
+                    "title": ["Origins", "Mechanism", "Field results", "Outlook"][i % 4],
+                    "purpose": f"Develop part {i + 1} of the document.",
+                    "target_tokens": target,
+                    "key_points": [f"Concrete point {i + 1}.1", f"Concrete point {i + 1}.2"],
+                    "entities": ["Orion", "Halcyon"],
+                    "relations": ["developed_by", "measured_at"],
+                }
+                for i in range(n)
+            ],
+        }
+
+    def _h_section(self, v: dict[str, Any]) -> dict[str, Any]:
+        section = json.loads(v["section_json"])
+        sid = section.get("section_id", "S1")
+        target = int(section.get("target_tokens", 300))
+        if sid == "S1":
+            text = self._h_passage({"blueprint_json": v["blueprint_json"]})["text"]
+            e = self._make_entities({"blueprint_json": v["blueprint_json"]})
+            filler = []
+            for j in range(max(3, (target - 40) // 20)):
+                filler.append(
+                    f"During interval {j + 1}, the {e['topic_word']} team logged "
+                    f"{11 + j * 7} observations and {3 + j} follow-up checks."
+                )
+            text = text + " " + " ".join(filler)
+        else:
+            e = self._make_entities({"blueprint_json": v["blueprint_json"]})
+            idx = int(re.sub(r"\D", "", sid) or "2")
+            sentences = []
+            for j in range(max(4, target // 20)):
+                sentences.append(
+                    f"In phase {idx}{j}, the {e['topic_word']} programme recorded "
+                    f"{idx * 17 + j * 3} units across {4 + j} sites and noted a "
+                    f"{idx + j} percent change from the previous interval."
+                )
+            text = " ".join(sentences)
+        return {"text": text}
+
     def _h_passage(self, v: dict[str, Any]) -> dict[str, Any]:
         e = self._make_entities(v)
         text = (

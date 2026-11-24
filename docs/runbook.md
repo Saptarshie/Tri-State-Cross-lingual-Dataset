@@ -81,9 +81,43 @@ clear error; rebuild with `index build` after choosing one.
 Interrupting a run is safe: press Ctrl-C, or kill the process. State is in SQLite plus atomic
 artefacts; `resume` continues from the last successful stage.
 
-Cost/latency (pilot, concurrency 3): ~14 provider calls and ~$0.008 per accepted family,
+Cost/latency (short pilot, concurrency 3): ~14 provider calls and ~$0.008 per accepted family,
 roughly 1–2 minutes per family wall-clock. Budgets: `execution.max_total_cost_usd`,
-`execution.max_calls_per_family`.
+`execution.max_calls_per_family` (default 80; long documents need more calls).
+
+### 3.1 Document length and claim count
+
+Both are configuration, not prompt edits:
+
+```yaml
+passage:
+  target_tokens_min: 2000     # whole-document target (model tokens)
+  target_tokens_max: 4000
+  sections_min: 3
+  sections_max: 8
+  section_tokens_min: 450
+  section_tokens_max: 900
+  max_sections: 24            # raise for 10k-15k targets if the derived count exceeds it
+claims:
+  target_claims_per_document: 4
+  min_claims_per_family: 2
+  max_claims_per_family: 12
+```
+
+The section count is derived from the mean target divided by the mean section size, so a
+10k–15k document becomes ~15–22 sections with no other change. Prompt versions change when the
+prompt text changes, not when these numbers change: `blueprint`/`passage` receive the numbers as
+render variables, so editing config does not invalidate unrelated artefacts.
+
+Cost scales roughly with document length: a 2k–4k document is ~1 section call per 675 tokens plus
+one extraction call per 1.5k tokens, three variant edits, three validations and three advisory
+re-extractions. Expect materially more than the short pilot per family; set
+`execution.max_total_cost_usd` deliberately.
+
+Long documents are edited from an **editing view** (claim evidence sentences ±
+`variants.edit_view_sentences`, capped by `edit_view_max_sentences`); patches still target global
+sentence IDs in the full document. This keeps the editor prompt bounded without changing the
+patch contract.
 
 ---
 
@@ -114,6 +148,9 @@ from calls group by 1,2'`.
 | Candidate stuck `RUNNING` | process died mid-stage | `resume` — the job restarts and overwrites its artefact |
 | Family rejected `family_rejected` | validator or hard check failed | inspect `data/quarantine/<cand>.json` `payload.validations` and `workdir/hard_checks.json` |
 | `near_duplicate_variants` | template overlap with an accepted family | regenerate with a different topic/intent; adjust `hnsw.near_duplicate_*` only with calibration |
+| `document_quality` / `section_quality` | assembled document or one section missed the length/quality band | inspect `data/quarantine/<cand>.json` `payload.problems`; the model usually wrote too little — raise `section_tokens_*` or lower `target_tokens_*`, do not weaken screening blindly |
+| `document_plan_invalid` | plan section count outside the derived band | check `passage.sections_min/max_sections` against the target length |
+| `claims_insufficient` | too few claims survived deterministic filtering | inspect `payload`; the document may not state enough checkable facts (raise `blueprint.target_fact_count` indirectly via a longer target) |
 | Split skew (all train) | small N hash assignment | expected; do not hand-edit `splits.json` |
 | Export writes no rows | no ACCEPTED families | `families list --status ACCEPTED` |
 | `ModuleNotFoundError: tristate` | foreign `PYTHONPATH` | `env -u PYTHONPATH …` |
@@ -163,5 +200,6 @@ for a clean regeneration, remove the candidate workdir or use a new data directo
 env -u PYTHONPATH .venv/Scripts/python.exe -m pytest -q
 ```
 
-121 tests, no network, ~10 seconds. The mock pipeline tests exercise the full stage graph,
-resume, idempotency, index-update ordering, splits, quarantine, export and reports.
+129 tests, no network, ~15 seconds. The mock pipeline tests exercise the full stage graph,
+resume, idempotency, index-update ordering, splits, quarantine, export and reports; the long-form
+tests cover window splitting, section assembly offsets, document screening and claim spreading.

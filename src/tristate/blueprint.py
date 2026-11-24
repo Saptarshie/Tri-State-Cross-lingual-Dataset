@@ -52,8 +52,12 @@ def plan_blueprint(
     novelty_report = novelty_report or {}
     style = choose_style(cfg, candidate, novelty_report)
     focus = candidate.seed_intent or (candidate.topic_path[-1] if candidate.topic_path else "general")
-    token_min = max(60, int(cfg.corpus.passage_token_min * 0.9))
-    token_max = int(cfg.corpus.passage_token_max * 0.9)
+    token_min = cfg.passage.target_tokens_min
+    token_max = cfg.passage.target_tokens_max
+    mean_section = (cfg.passage.section_tokens_min + cfg.passage.section_tokens_max) / 2
+    target_sections = int(round(((token_min + token_max) / 2) / max(1.0, mean_section)))
+    target_sections = max(cfg.passage.sections_min, min(cfg.passage.sections_max, target_sections))
+    planned_facts = max(6, min(12, int(((token_min + token_max) / 2) / 400)))
     result = llm.structured(
         "blueprint",
         {
@@ -66,7 +70,7 @@ def plan_blueprint(
             "complexity": style["complexity"],
             "token_min": token_min,
             "token_max": token_max,
-            "target_fact_count": 4,
+            "target_fact_count": planned_facts,
             "seed_intent": candidate.seed_intent or "explore this topic from an unusual angle",
             "novelty_report": novelty_report.get("guidance", "(no prior generations)"),
         },
@@ -98,7 +102,8 @@ def plan_blueprint(
         tone=style["tone"],
         structure=style["structure"],
         complexity=style["complexity"],
-        target_fact_count=max(3, min(6, int(payload.target_fact_count or 4))),
+        target_fact_count=max(planned_facts, min(12, int(payload.target_fact_count or planned_facts))),
         target_length_tokens=[token_min, token_max],
+        target_sections=target_sections,
         novelty_report=novelty_report,
     )

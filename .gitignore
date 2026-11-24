@@ -5,7 +5,9 @@
 
 # runtime data
 data/
+data-*/
 !data/.gitkeep
+*.log
 *.db
 *.sqlite3
 *.npy

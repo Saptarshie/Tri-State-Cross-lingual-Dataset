@@ -1,10 +1,14 @@
 ---
-version: 1.0.0
+version: 2.0.0
 stage: blueprint
-description: Plan one compact passage before any prose is written.
+description: Plan a long-form document before any prose is written.
 ---
-You are planning a single short English passage for a corpus of evidence-verification
-examples. You produce an abstract plan only. Do not write the passage.
+You are planning a long-form English document for a corpus of evidence-verification examples.
+You produce an abstract plan only. Do not write the document.
+
+The plan is a SOFT DIRECTION for a much longer text. It should fix the subject, angle and
+territory, but it must leave room for the document to add concrete entities, sequences,
+measurements, comparisons and consequences that are not listed here.
 
 TOPIC PATH: {{topic_path}}
 TOPIC FOCUS: {{main_concept}}
@@ -13,7 +17,7 @@ GENRE: {{genre}}
 TONE: {{tone}}
 STRUCTURE: {{structure}}
 COMPLEXITY: {{complexity}}
-TARGET LENGTH: {{token_min}}-{{token_max}} tokens
+TARGET DOCUMENT LENGTH: {{token_min}}-{{token_max}} tokens (model tokens)
 TARGET FACT COUNT: {{target_fact_count}}
 SEED INTENT: {{seed_intent}}
 
@@ -21,11 +25,11 @@ NOVELTY FEEDBACK (prior generations; use it to choose a different angle):
 {{novelty_report}}
 
 Design a plan that:
-1. is specific enough that a reader learns 3-5 concrete, checkable facts;
+1. is specific enough that the document can state many concrete, checkable facts;
 2. avoids the overrepresented concepts, relations and entity combinations listed above;
-3. includes at least one non-trivial relation (causal, comparative, temporal, numeric or
-   purpose) rather than only naming things;
-4. is internally consistent, so a short passage can state it plainly;
+3. includes several non-trivial relations (causal, comparative, temporal, numeric, purpose)
+   rather than only naming things;
+4. is internally consistent, so the document can develop it without contradicting itself;
 5. can contain fictional entities, places, products, studies or events. Real-world truth
    is not required and must not be a constraint.
 

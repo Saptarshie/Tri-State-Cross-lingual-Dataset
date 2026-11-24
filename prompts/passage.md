@@ -1,11 +1,12 @@
 ---
-version: 1.1.0
+version: 2.0.0
 stage: passage
-description: Generate one compact, natural English passage from a blueprint.
+description: Generate one short passage (single-call mode) from a soft blueprint.
 ---
-Write one short English passage from the plan below. It must read like a genuine
-retrieved chunk from the stated genre, not like an encyclopedic essay and not like a
-list of disconnected facts.
+Write one short English passage from the plan below. The plan is a SOFT DIRECTION, not a
+summary to restate: you may and should add concrete detail that the plan does not spell out.
+It must read like a genuine retrieved chunk from the stated genre, not like an encyclopedic
+essay and not like a list of disconnected facts.
 
 PLAN:
 {{blueprint_json}}
@@ -14,7 +15,7 @@ SOURCE MATERIAL (may be empty; use only for factual grounding and never copy lon
 {{source_excerpt}}
 
 CONSTRAINTS
-- Length: {{token_min}}-{{token_max}} words.
+- Length: about {{token_min}}-{{token_max}} model tokens (roughly {{word_min}}-{{word_max}} words).
 - Genre: {{genre}}. Tone: {{tone}}. Structure: {{structure}}. Complexity: {{complexity}}.
 - State {{target_fact_count}}-{{max_facts}} concrete, checkable facts, including at least one
   numeric, temporal, causal, comparative or purpose relation when the plan allows it.

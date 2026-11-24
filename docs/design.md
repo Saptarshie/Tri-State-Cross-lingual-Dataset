@@ -467,8 +467,8 @@ best-chunk match and prevents "new document, copied sections" from passing.
 
 Only accepted families are indexed. Test-split entries are filtered out of every retrieval used
 to steer generation (`hnsw.split_aware`). Stats (`index/stats.json`) count relations, entities,
-genres, tones, structures, topic paths and edit operations, and drive the pre-generation
-"underrepresented alternative" suggestions.
+genres, tones, narratives, structures, topic paths and edit operations, and drive the
+pre-generation "underrepresented alternative" suggestions.
 
 Post-generation checks compare cosine and bigram Jaccard against the chunked passage index.
 Near duplicates are quarantined by default (thresholds configurable); a high cosine alone is a
@@ -515,9 +515,9 @@ silently exported.
 ## 12. Reporting and shortcut audit
 
 `report quality` aggregates: counts by status, acceptance rate and rejection reasons, dataset
-distributions (topic, genre, tone, structure, length, claims, claim types, edit operations),
-split counts, validator agreement, graph-diff misses, novelty scores, token/cost totals and
-per-stage cost/latency.
+distributions (topic, genre, tone, narrative, structure, length, claims, claim types, edit
+operations), split counts, validator agreement, graph-diff misses, novelty scores, token/cost
+totals and per-stage cost/latency.
 
 The shortcut audit trains a multinomial logistic regression on **surface-form features of the
 passage text only** (length, sentence count, punctuation density, uppercase/digit ratios,

@@ -79,9 +79,12 @@ def main() -> int:
             "stdout_tail": proc.stdout[-2000:],
             "stderr_tail": proc.stderr[-2000:],
         })
-        state["status"] = "finalized" if proc.returncode == 0 else f"failed:{name}"
         save()
-        if proc.returncode != 0:
+        # Indexing is useful but not required for a valid export. Do not let an
+        # embedder problem block the dataset itself.
+        if proc.returncode != 0 and name != "index":
+            state["status"] = f"failed:{name}"
+            save()
             return 4
     state["status"] = "finalized"
     state["finished_at"] = now()

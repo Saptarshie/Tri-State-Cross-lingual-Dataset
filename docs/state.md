@@ -138,7 +138,8 @@ internal contradiction).
 - One CONTRADICTED repair round was needed (`C2/C3 expected CONTRADICTED, got NEUTRAL`);
   the repaired variant validated. UNSUPPORTED passed first validation for both candidates.
 - Exported as **`pilot-03-longform`**: 2 families / 6 variants / 7 claims, 2 per label,
-  all `train`; `manifest.problems: []`.
+  all `train`; `manifest.problems: []`. The export was generated with `document_plan` 1.0.0;
+  the current 1.1.0 only tightens the section-count band and does not change existing records.
 
 ---
 

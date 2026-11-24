@@ -61,7 +61,7 @@ Exported to `data/exports/pilot-02/` (immutable copy: `families.jsonl`, `variant
 | quarantined | 3: 2× `llm_permanent` (pre-64k run), 1× `claims_insufficient` |
 | near-duplicates in index | 0; mean max cosine 0.310, p95 0.548 |
 | index vectors | blueprint 15, passage 60, fact_claim 15, edit_signature 45 |
-| total LLM cost | $0.1383 · 641,184 tokens · $0.0092/family |
+| total LLM cost | $0.1383 · 641,184 tokens · $0.0092/family (excludes a pre-pricing failed run of 4.4k/7.8k tokens recorded at $0, ≈$0.003 at current rates) |
 
 Label balance is exact by construction (every accepted family has all three variants).
 
@@ -74,6 +74,14 @@ RELATION_REVERSAL 8, ENTITY 8, POLARITY 5, CATEGORY 2.
 ---
 
 ## 4. Runs
+
+### Run 0 — pre-64k attempt (failed, kept for the record)
+
+`--limit 1 --topic Technology` at the original 2,000-token stage ceilings: blueprint and passage
+succeeded, both extraction calls returned empty content with `finish_reason: length`, and both
+candidates were quarantined `llm_permanent`. 6 ledgered calls (4,360 prompt / 7,791 completion),
+cost recorded as $0 because per-stage pricing was not yet configured. This run is the evidence
+behind the 64k decision; the failed candidates are the two `QUARANTINED` rows in `pilot-02`.
 
 ### Run A — first successful real-provider run (2 families)
 

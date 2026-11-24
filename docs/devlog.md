@@ -135,7 +135,12 @@ worth remembering. Times are local (IST).
   to text-only surface features (length, punctuation, casing, digits) with a family-wise split.
   Honest result: **0.467 accuracy, 95% CI 0.27–0.73**, chance 0.333, not flagged. Added
   `tests/test_audit.py`.
-- Test suite grown to **120 tests**, all passing offline (`pytest -q`); ruff `F,E9` clean.
+- **Graph diff cannot reject on its own failure.** Found while reviewing the advisory path: a
+  failed per-variant re-extraction was stored as an error artefact, then `model_validate` raised
+  and the candidate was quarantined `internal` — the diagnostic could veto a family it is
+  explicitly not supposed to gate. Now recorded as `status: unavailable` with no misses, and a
+  regression test forces the extraction failure to prove the family still accepts.
+- Test suite grown to **121 tests**, all passing offline (`pytest -q`); ruff `F,E9` clean.
 - Wrote `README.md`, `docs/design.md`, `docs/state.md`, `docs/runbook.md`,
   `docs/dataset-card.md`, `docs/reports/pilot-02-*`, this log.
 - Exported immutable versions `pilot-01` (14 families) and `pilot-02` (15 families).

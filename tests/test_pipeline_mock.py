@@ -107,6 +107,31 @@ def test_same_topic_families_share_lineage_group(cfg):
         p.close()
 
 
+def test_graph_diff_extraction_failure_is_advisory(cfg, monkeypatch):
+    import tristate.pipeline as pl
+    from tristate.errors import StageError
+
+    original = pl.extract_semantics
+
+    def fake_extract(llm, cfg_, text, candidate_id=None, stage="extract", feedback=""):
+        if stage.startswith("extract_"):
+            raise StageError("extraction_insufficient", "forced graph-diff extraction failure")
+        return original(llm, cfg_, text, candidate_id=candidate_id, stage=stage, feedback=feedback)
+
+    monkeypatch.setattr(pl, "extract_semantics", fake_extract)
+    p, summary = _run(cfg)
+    try:
+        assert summary.accepted == 1, summary.as_dict()
+        cid = next(r["candidate_id"] for r in p.store.list_candidates() if r["status"] == "ACCEPTED")
+        diffs = json.loads((p.store.workdir(cid) / "graphdiff.json").read_text())
+        assert set(diffs) == set(LABELS)
+        assert all(d["status"] == "unavailable" and d["ok"] is None for d in diffs.values())
+        fam = Family.model_validate(p.store.load_family(p.store.list_families()[0]["family_id"]))
+        assert all(v.graph_diff["status"] == "unavailable" for v in fam.variants.values())
+    finally:
+        p.close()
+
+
 def test_quarantine_records_stage_and_reason(tmp_path):
     cfg = load_config(
         overrides={

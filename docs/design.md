@@ -117,13 +117,13 @@ Otherwise the stage re-runs and overwrites its artefact (the attempt counter inc
 
 Failure semantics:
 
-| Failure | Result |
-|---|---|
-| `StageError` (quality/semantic) | candidate quarantined with `code: message` + details |
-| permanent provider error (4xx/schema) | candidate quarantined as `llm_permanent` |
-| transient provider error | bounded exponential backoff with jitter, then fail |
-| budget exhausted | candidate returned to `PENDING`; run stops cleanly |
-| unexpected exception | full traceback to `logs/errors.log`, candidate quarantined `internal` |
+| Failure                               | Result                                                                |
+| ------------------------------------- | --------------------------------------------------------------------- |
+| `StageError` (quality/semantic)       | candidate quarantined with `code: message` + details                  |
+| permanent provider error (4xx/schema) | candidate quarantined as `llm_permanent`                              |
+| transient provider error              | bounded exponential backoff with jitter, then fail                    |
+| budget exhausted                      | candidate returned to `PENDING`; run stops cleanly                    |
+| unexpected exception                  | full traceback to `logs/errors.log`, candidate quarantined `internal` |
 
 Known limitation: invalidating a prompt or model re-runs that stage in isolation; downstream
 artefacts produced from the older output are not automatically invalidated. For a clean
@@ -163,13 +163,13 @@ Prompt set: `topics_expand`, `blueprint`, `passage`, `extract`, `claims`, `edit_
 
 ### 5.3 Model assignment (pilot defaults)
 
-| Stage | Model | Why |
-|---|---|---|
-| blueprint, passage | `deepseek/deepseek-v4.1-flash` | creative prose quality |
-| extraction, claims | `xiaomi/mimo-v2.6-flash` | dependable JSON, faster/cheaper |
-| editing | `deepseek/deepseek-v4.1-flash` | precise localized patches |
-| validation | `google/gemini-3.8-flash` | independent family from editor and claim generator |
-| second validation | `xiaomi/mimo-v2.6-flash` | disagreement check, cheap |
+| Stage              | Model                          | Why                                                |
+| ------------------ | ------------------------------ | -------------------------------------------------- |
+| blueprint, passage | `deepseek/deepseek-v4.1-flash` | creative prose quality                             |
+| extraction, claims | `xiaomi/mimo-v2.6-flash`       | dependable JSON, faster/cheaper                    |
+| editing            | `deepseek/deepseek-v4.1-flash` | precise localized patches                          |
+| validation         | `google/gemini-3.8-flash`      | independent family from editor and claim generator |
+| second validation  | `xiaomi/mimo-v2.6-flash`       | disagreement check, cheap                          |
 
 Independence is structural: the editor is DeepSeek, the validator is Gemini, and the intended
 label is never included in the validation prompt.
@@ -255,11 +255,11 @@ The base text is never mutated; variants are new strings with their own checksum
 The editor sees the whole claim set, the numbered sentences and per-claim evidence. It must
 produce patches covering every claim ID. Allowed operations are label-specific:
 
-| Label | Allowed |
-|---|---|
-| SUPPORTED | `NEUTRAL_REWRITE`, `REPLACE_CLAUSE` (or no patches at all → base kept) |
+| Label        | Allowed                                                                                |
+| ------------ | -------------------------------------------------------------------------------------- |
+| SUPPORTED    | `NEUTRAL_REWRITE`, `REPLACE_CLAUSE` (or no patches at all → base kept)                 |
 | CONTRADICTED | entity/number/time substitution, relation reversal, polarity, category, clause rewrite |
-| UNSUPPORTED | delete span, neutral rewrite, clause replacement |
+| UNSUPPORTED  | delete span, neutral rewrite, clause replacement                                       |
 
 A plan is rejected before application if it leaves coverage gaps, references unknown claims,
 uses a forbidden operation, produces an unapplicable patch, or fails structural screening
@@ -324,8 +324,11 @@ paraphrase, not a contradiction). Unrelated-fact stability is reported.
 
 Because extraction is lossy, graph diff is **advisory** by default
 (`validation.require_graph_diff: false`). It is stored per variant, reported, and can be made a
-gate by configuration with `max_graph_diff_misses`. It never overrides the independent
-validator's decision.
+gate by configuration with `max_graph_diff_misses`. If the per-variant re-extraction fails or its
+artefact is malformed, the diff is recorded with `status: unavailable` and contributes no miss:
+a failed diagnostic must never reject a family that already passed independent validation.
+When the gate is enabled, only entries with `ok: false` count toward the miss budget. Graph diff
+never overrides the independent validator's decision.
 
 ### 8.4 Quarantine, not relabel
 
@@ -359,12 +362,12 @@ insertion order on load, which keeps snapshots portable.
 
 ### 9.3 Namespaces
 
-| Namespace | Text embedded | Metadata anchors |
-|---|---|---|
-| `blueprint` | topic path, concept, subtopics, relations, genre | family, split, concept |
-| `passage` | each variant + base passage | variant ID, label, text hash, excerpt |
-| `fact_claim` | extracted triples + claim texts | family, claim/fact types |
-| `edit_signature` | label + operation sequence | operations, family |
+| Namespace        | Text embedded                                    | Metadata anchors                      |
+| ---------------- | ------------------------------------------------ | ------------------------------------- |
+| `blueprint`      | topic path, concept, subtopics, relations, genre | family, split, concept                |
+| `passage`        | each variant + base passage                      | variant ID, label, text hash, excerpt |
+| `fact_claim`     | extracted triples + claim texts                  | family, claim/fact types              |
+| `edit_signature` | label + operation sequence                       | operations, family                    |
 
 Only accepted families are indexed. Test-split entries are filtered out of every retrieval used
 to steer generation (`hnsw.split_aware`). Stats (`index/stats.json`) count relations, entities,
@@ -446,7 +449,7 @@ thresholds, split fractions and salt, concurrency/retries/budget, per-stage mode
 
 ## 14. Testing
 
-120 tests, no network:
+121 tests, no network:
 
 - utilities: sentence segmentation, hashing, script/meta checks, atomic IO;
 - IDs and schema invariants (three labels, unique claims, distinct accepted variants);
@@ -500,29 +503,29 @@ caveat).
 
 ## 16. Milestone alignment
 
-| Milestone | State |
-|---|---|
-| 0 repository/environment inspection | done (docs, provider probe, embedder probe) |
-| 1 minimal end-to-end family generator | done; pilot families accepted and exported |
-| 2 topic graph, HNSW indexes, pre/post novelty | done (four namespaces; split-aware) |
-| 3 patch editing, bounded repair, graph diff, disagreement queue | done, except human-review export/UI |
+| Milestone                                                              | State                                                                                                        |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| 0 repository/environment inspection                                    | done (docs, provider probe, embedder probe)                                                                  |
+| 1 minimal end-to-end family generator                                  | done; pilot families accepted and exported                                                                   |
+| 2 topic graph, HNSW indexes, pre/post novelty                          | done (four namespaces; split-aware)                                                                          |
+| 3 patch editing, bounded repair, graph diff, disagreement queue        | done, except human-review export/UI                                                                          |
 | 4 corpus expansion, news ingestion, style sampling, coverage scheduler | partial: topic expansion, style sampling, coverage selection and local ingestion done; network ingestion not |
-| 5 scale-out (async queues, dashboards, snapshots, locked test set) | partial: durable jobs, concurrency, budget, exports, splits done; dashboards/async workers not |
-| 6 multilingual | not started (schema fields present: language/script/locale) |
+| 5 scale-out (async queues, dashboards, snapshots, locked test set)     | partial: durable jobs, concurrency, budget, exports, splits done; dashboards/async workers not               |
+| 6 multilingual                                                         | not started (schema fields present: language/script/locale)                                                  |
 
 ---
 
 ## 17. Decision log
 
-| Decision | Rationale | Failure mode accepted |
-|---|---|---|
-| Hash-based candidate IDs, sequential family IDs | reruns resume the same work; acceptance order is separable | ID gaps when a candidate is quarantined |
-| Patch-first editing with deterministic engine | auditable diffs, no silent rewrites | model must copy spans exactly; repairs cost calls |
-| Intended label hidden from validator | reduces confirmation bias | validator may fail a correct variant; second validator and repair mitigate |
-| Different model family for validation | avoids self-approval | cost; still LLM judgement |
-| Graph diff advisory | extraction is lossy | weak signal for subtle edits |
-| Ollama embeddings + hashing fallback | offline, deterministic, no hosted embedding API | two embedder families cannot share an index |
-| Only accepted records indexed | novelty must not be poisoned by rejects | indexing lags acceptance by seconds |
-| Hash splits with lineage groups | stable, family-level, leakage-safe | small-N skew |
-| Quarantine mixed families | preserves the all-or-nothing contract | lower initial yield |
-| Local embeddings cache | free reruns | disk usage |
+| Decision                                                         | Rationale                                                  | Failure mode accepted                                                      |
+| ---------------------------------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Hash-based candidate IDs, sequential family IDs                  | reruns resume the same work; acceptance order is separable | ID gaps when a candidate is quarantined                                    |
+| Patch-first editing with deterministic engine                    | auditable diffs, no silent rewrites                        | model must copy spans exactly; repairs cost calls                          |
+| Intended label hidden from validator | reduces confirmation bias                                  | validator may fail a correct variant; second validator and repair mitigate |
+| Different model family for validation                            | avoids self-approval                                       | cost; still LLM judgement                                                  |
+| Graph diff advisory                                              | extraction is lossy                                        | weak signal for subtle edits                                               |
+| Ollama embeddings + hashing fallback                             | offline, deterministic, no hosted embedding API            | two embedder families cannot share an index                                |
+| Only accepted records indexed                                    | novelty must not be poisoned by rejects                    | indexing lags acceptance by seconds                                        |
+| Hash splits with lineage groups                                  | stable, family-level, leakage-safe                         | small-N skew                                                               |
+| Quarantine mixed families                                        | preserves the all-or-nothing contract                      | lower initial yield                                                        |
+| Local embeddings cache                                           | free reruns                                                | disk usage                                                                 |

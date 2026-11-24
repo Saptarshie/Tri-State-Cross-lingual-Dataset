@@ -18,7 +18,7 @@ Passages may be synthetic or counterfactual: real-world truth is explicitly **no
 ## Status
 
 - Milestone 0–3 vertical slice implemented and exercised end to end.
-- `pytest`: 120 tests passing (unit, semantic-contract, editor, novelty, corpus, audit, end-to-end with mocked workers).
+- `pytest`: 121 tests passing (unit, semantic-contract, editor, novelty, corpus, audit, end-to-end with mocked workers).
 - Real-provider pilot: families generated, validated and exported (see `docs/state.md`).
 - Planned next: corpus expansion, richer editing patterns, larger scale-out
   (see `docs/state.md`).

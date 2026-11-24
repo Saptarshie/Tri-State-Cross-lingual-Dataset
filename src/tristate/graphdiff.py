@@ -117,6 +117,7 @@ def diff_graph(
     unrelated_total = len(unrelated_base)
     return {
         "label": label,
+        "status": "ok",
         "per_claim": per_claim,
         "misses": misses,
         "ok": not misses,

@@ -443,9 +443,28 @@ class Pipeline:
             graph_diffs: dict[str, dict] = {}
             for label in LABELS:
                 variant_sem_raw = self.store.load_artifact(cid, f"semantic_{label}")
-                if variant_sem_raw:
+                if not variant_sem_raw or "error" in variant_sem_raw:
+                    # graph diff is advisory: a failed re-extraction must not reject a family
+                    # that already passed independent validation
+                    graph_diffs[label] = {
+                        "label": label,
+                        "status": "unavailable",
+                        "ok": None,
+                        "misses": [],
+                        "reason": (variant_sem_raw or {}).get("error", "missing variant semantics"),
+                    }
+                    continue
+                try:
                     variant_sem = SemanticRepresentation.model_validate(variant_sem_raw)
                     graph_diffs[label] = diff_graph(semantic, variant_sem, claims, label)
+                except Exception as exc:  # malformed artefact, never a quality verdict
+                    graph_diffs[label] = {
+                        "label": label,
+                        "status": "unavailable",
+                        "ok": None,
+                        "misses": [],
+                        "reason": str(exc)[:200],
+                    }
             if graph_diffs:
                 self.store.save_artifact(cid, "graphdiff", graph_diffs)
 
@@ -460,7 +479,11 @@ class Pipeline:
 
             ok, reasons = summarise_family_validation(validations, hard)
             if self.cfg.validation.require_graph_diff:
-                misses = [f"{label}:{d['misses']}" for label, d in graph_diffs.items() if not d["ok"]]
+                misses = [
+                    f"{label}:{d['misses']}"
+                    for label, d in graph_diffs.items()
+                    if d.get("ok") is False
+                ]
                 if len(misses) > self.cfg.validation.max_graph_diff_misses:
                     ok = False
                     reasons.append(f"graph_diff:{misses}")

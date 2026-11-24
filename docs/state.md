@@ -36,7 +36,7 @@ families are immutable; quarantined candidates keep their workdir and reasons.
 - Models: deepseek-v4.1-flash (blueprint, passage, editor), mimo-v2.6-flash (extraction, claims,
   second validator), gemini-3.8-flash (primary validator).
 - Embeddings: local Ollama `embeddinggemma` (768-d), cached under `data/embeddings/`.
-- Tests: `120 passed` (offline); `ruff check --select F,E9` clean.
+- Tests: `121 passed` (offline); `ruff check --select F,E9` clean.
 
 Note: every command must run with `env -u PYTHONPATH` on this host (foreign `PYTHONPATH` shadows
 the project's packages).

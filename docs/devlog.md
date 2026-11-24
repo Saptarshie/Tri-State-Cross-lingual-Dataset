@@ -169,6 +169,29 @@ worth remembering. Times are local (IST).
 
 ---
 
+## 2026-11-25 — narrative axis, style priming, 200-family batch
+
+- **Added a second style axis.** `blueprint.narratives` now carries `expository`, `storytelling`,
+  `first_person`, `persuasive`, `humorous`, `opinionated`. `choose_style()` samples it with the
+  same deterministic seed + 60% least-used novelty bias as tone; the value is copied into
+  `Blueprint`, `PassageRecord`, family metadata and novelty counters.
+- **Prompting is now two-stage.** `prompts/style_shots.yaml` holds a directive and one short
+  exemplar per tone/narrative plus composed exemplars for known conflicts. Blueprint receives
+  directives; section/passage prompts receive a rendered priming block with the precedence rule
+  (tone governs diction, narrative governs structure/POV/stance) and an explicit ban on reusing
+  exemplar topics or wording. Editor prompt gained a preserve-voice rule.
+- **Topic expansion fixed for scale.** `expand_to_target()` grows open leaves breadth-first and
+  `ensure_candidates(expand=True)` now expands *before* selection, so a 200-family target creates
+  enough distinct leaves instead of reusing ~20 topics.
+- **Batch driver.** `scripts/generate_dataset.py` seeds/expands, runs until an accepted-family
+  target, and checkpoints `batch_manifest.json` per round; safe to resume after a crash.
+- Prompt versions: blueprint 3.0.0, passage 3.0.0, section 2.0.0, edit_plan 3.2.0,
+  topics_expand 2.0.0. Tests **133** (3 style tests added).
+- Real pilot in `data-v4`: 2/2 accepted, 51 calls, $0.0948, 2,695 and 2,113 tokens; styles
+  `neutral_explanatory/persuasive` and `instructional/expository`.
+
+---
+
 ## Open items (carried forward)
 
 - Network news ingestion with robots/terms handling and licence metadata.

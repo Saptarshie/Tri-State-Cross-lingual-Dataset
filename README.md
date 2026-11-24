@@ -18,7 +18,7 @@ Passages may be synthetic or counterfactual: real-world truth is explicitly **no
 ## Status
 
 - Milestone 0–3 vertical slice implemented and exercised end to end.
-- `pytest`: 130 tests passing (unit, semantic-contract, editor, novelty, corpus, audit, long-form assembly, end-to-end with mocked workers).
+- `pytest`: 133 tests passing (unit, semantic-contract, editor, novelty, corpus, audit, style axes, long-form assembly, end-to-end with mocked workers).
 - Real-provider pilot: families generated, validated and exported (see `docs/state.md`).
 - Planned next: corpus expansion, richer editing patterns, larger scale-out
   (see `docs/state.md`).
@@ -41,6 +41,10 @@ env -u PYTHONPATH .venv/Scripts/python.exe -m tristate run --limit 2 --data-dir 
 
 # 5. real generation
 env -u PYTHONPATH .venv/Scripts/python.exe -m tristate run --limit 10
+
+# large resumable batch (200 base documents = 600 variants, concurrency 10)
+env -u PYTHONPATH .venv/Scripts/python.exe scripts/generate_dataset.py \
+  --data-dir data-v5 --target-families 200 --concurrency 10 --budget-usd 25
 
 # 6. reports, index snapshot, export
 env -u PYTHONPATH .venv/Scripts/python.exe -m tristate report md
@@ -68,6 +72,15 @@ claims:
   min_claims_per_family: 2
   max_claims_per_family: 12
 ```
+
+### Style axes
+
+`blueprint.genres`, `tones`, `structures`, `narratives` and `complexities` are sampled once per
+family and shared by all three variants. Tone is register; narrative is mode/stance
+(`expository`, `storytelling`, `first_person`, `persuasive`, `humorous`, `opinionated`).
+`prompts/style_shots.yaml` supplies a directive and short exemplar per label plus composed
+exemplars for conflict pairs; section prompts receive the rendered priming block. Adding a label
+requires both a config entry and a YAML block (`tests/test_style.py` checks coverage).
 
 The document is written section by section (resumable per section), then assembled; the compact
 blueprint is a soft direction and a novelty constraint, not a length ceiling.

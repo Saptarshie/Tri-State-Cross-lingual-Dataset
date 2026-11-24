@@ -143,7 +143,8 @@ class Blueprint(LlmModel):
     planned_fact_types: list[str] = Field(default_factory=list)
     genre: str = "encyclopedia_entry"
     tone: str = "neutral_explanatory"
-    structure: str = "paragraph"
+    structure: str = "multi_section_report"
+    narrative: str = "expository"
     complexity: str = "intermediate"
     target_fact_count: int = 4
     target_length_tokens: list[int] = Field(default_factory=lambda: [2000, 4000])
@@ -365,6 +366,7 @@ class PassageRecord(StrictModel):
     genre: str
     tone: str
     structure: str
+    narrative: str = "expository"
     complexity: str = "intermediate"
     token_count: int = 0
     sentence_count: int = 0

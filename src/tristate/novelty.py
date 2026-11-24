@@ -8,6 +8,7 @@ and test-split families are excluded from the retrieval pool used to steer gener
 
 from __future__ import annotations
 
+import random
 from typing import Any, Iterable
 
 from .config import Config
@@ -69,7 +70,7 @@ class NoveltyService:
                 )
         self.stats = read_json(self.root / "stats.json", default=None) or {
             "relation_types": {}, "entity_types": {}, "entities": {}, "genres": {},
-            "tones": {}, "structures": {}, "topic_paths": {}, "edit_ops": {}, "labels": {},
+            "tones": {}, "narratives": {}, "structures": {}, "topic_paths": {}, "edit_ops": {}, "labels": {},
             "families": 0,
         }
 
@@ -124,6 +125,7 @@ class NoveltyService:
         suggested = {
             "genre": self._least_used(self.cfg.blueprint.genres, self.stats.get("genres", {})),
             "tone": self._least_used(self.cfg.blueprint.tones, self.stats.get("tones", {})),
+            "narrative": self._least_used(self.cfg.blueprint.narratives, self.stats.get("narratives", {})),
             "structure": self._least_used(self.cfg.blueprint.structures, self.stats.get("structures", {})),
             "relation": self._least_used(RELATION_POOL, self.stats.get("relation_types", {})),
         }
@@ -131,8 +133,9 @@ class NoveltyService:
         guidance = (
             f"Similar prior plans: {len(blueprints)}; top similarity {max_sim:.2f}. "
             f"Overrepresented relations: {', '.join(x['key'] for x in over['relations'][:4]) or 'none yet'}. "
-            f"Prefer genre '{suggested['genre']}', tone '{suggested['tone']}', structure "
-            f"'{suggested['structure']}' and a relation like '{suggested['relation']}'."
+            f"Prefer genre '{suggested['genre']}', tone '{suggested['tone']}', narrative "
+            f"'{suggested['narrative']}', structure '{suggested['structure']}' and a relation "
+            f"like '{suggested['relation']}'."
         )
         return {
             "topic_path": topic_path,
@@ -168,7 +171,11 @@ class NoveltyService:
     def _least_used(self, options: list[str], counter: dict[str, int]) -> str:
         if not options:
             return ""
-        return min(options, key=lambda o: (counter.get(o, 0), options.index(o)))
+        low = min(counter.get(o, 0) for o in options)
+        ties = [o for o in options if counter.get(o, 0) == low]
+        # Random tie-breaking prevents the first list entry from winning every
+        # zero-count round (that bug collapsed narrative variety to expository).
+        return ties[random.randrange(len(ties))]
 
     # ------------------------------------------------------------------ #
     # Post-generation novelty check
@@ -342,6 +349,7 @@ class NoveltyService:
                 inc("entities", ent.name)
         inc("genres", family.base_passage.genre)
         inc("tones", family.base_passage.tone)
+        inc("narratives", family.base_passage.narrative)
         inc("structures", family.base_passage.structure)
         inc("topic_paths", " > ".join(family.topic.topic_path))
         for label, variant in family.variants.items():
@@ -365,7 +373,7 @@ class NoveltyService:
             )
         self.stats = {
             "relation_types": {}, "entity_types": {}, "entities": {}, "genres": {},
-            "tones": {}, "structures": {}, "topic_paths": {}, "edit_ops": {}, "labels": {},
+            "tones": {}, "narratives": {}, "structures": {}, "topic_paths": {}, "edit_ops": {}, "labels": {},
             "families": 0,
         }
         n = 0

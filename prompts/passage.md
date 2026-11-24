@@ -1,5 +1,5 @@
 ---
-version: 2.0.0
+version: 3.0.0
 stage: passage
 description: Generate one short passage (single-call mode) from a soft blueprint.
 ---
@@ -14,9 +14,12 @@ PLAN:
 SOURCE MATERIAL (may be empty; use only for factual grounding and never copy long spans):
 {{source_excerpt}}
 
+STYLE PRIMING
+{{style_priming}}
+
 CONSTRAINTS
 - Length: about {{token_min}}-{{token_max}} model tokens (roughly {{word_min}}-{{word_max}} words).
-- Genre: {{genre}}. Tone: {{tone}}. Structure: {{structure}}. Complexity: {{complexity}}.
+- Genre: {{genre}}. Tone: {{tone}}. Narrative: {{narrative}}. Structure: {{structure}}. Complexity: {{complexity}}.
 - State {{target_fact_count}}-{{max_facts}} concrete, checkable facts, including at least one
   numeric, temporal, causal, comparative or purpose relation when the plan allows it.
 - Name every entity explicitly. Do not use "it", "they" or "this" to refer to the main

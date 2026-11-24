@@ -194,10 +194,24 @@ component logged. Acceptance propagates `accepted += 1` to the topic and `×0.5`
 ### 6.2 Blueprint
 
 An LLM plan (concept, subtopics, planned entity/relation/fact types, fact count) plus style
-sampled deterministically from the configured genre/tone/structure/complexity lists, biased
-toward the least-used options reported by the novelty service. A novelty report (similar
+sampled deterministically from the configured genre/tone/structure/narrative/complexity lists,
+biased toward the least-used options reported by the novelty service. A novelty report (similar
 blueprints, overrepresented relations/entities, suggested style) is computed twice: a
 topic-level report before planning, and a plan-level report attached to the blueprint.
+
+**Style axes.** Tone is the register (seven labels: neutral_explanatory, formal, conversational,
+academic, concise_journalistic, instructional, analytical). Narrative is the mode/stance
+(expository, storytelling, first_person, persuasive, humorous, opinionated). They are independent
+and may conflict; the prompt precedence rule is: tone governs diction, rhythm and formality;
+narrative governs structure, point of view and stance; keep the narrative inside the tone's
+register. Style is sampled once per family and copied to all three variants, so surface style
+cannot become a label shortcut. `src/tristate/style.py` loads
+`prompts/style_shots.yaml`, which carries a directive and one short exemplar per axis plus
+composed exemplars for known conflict pairs (`academic×humorous`, `formal×first_person`,
+`concise_journalistic×storytelling`, `instructional×opinionated`, `analytical×persuasive`).
+Exemplars are explicitly style-only: prompts forbid reusing their topics, names, facts or wording.
+The blueprint prompt receives directives, not prose shots; section and short-passage prompts
+receive the full priming block.
 
 ### 6.3 Document generation (length-configurable)
 
@@ -229,7 +243,7 @@ test suite). Otherwise generation is sectioned:
    `sections_min..max_sections`); the prompt is asked for 75–125% of that figure and the plan is
    rejected outside that band, so a 10k target cannot silently become a four-section document.
 3. **Section writing** (`prompts/section.md`) is one call per section with the blueprint, the
-   throughline, the section spec, the covered-point list and the last
+   throughline, the section spec, the covered-point list, the style priming block and the last
    `section_context_chars` of prior text. Sections are independent artefacts
    (`work/<candidate>/section_<key>.json`, keyed by plan + section + prompt version), so a crash
    resumes without re-paying completed sections.
@@ -525,9 +539,11 @@ without overriding real environment variables, and is git-ignored.
 
 Important knobs: `passage.target_tokens_*` (document length) and `sections_*`/`max_sections`
 (sectioning, derived count), `extraction.window_*`, `claims.target_claims_per_document` and
-`min_distinct_sections`, variant length/overlap bounds, repair attempts, validator confidence and
-second-validator policy, HNSW M/ef/thresholds and `passage_chunk_tokens`, near-duplicate
-thresholds, split fractions and salt, concurrency/retries/budget, per-stage models and costs.
+`min_distinct_sections`, `blueprint.tones`/`narratives`/`genres`/`structures` (style axes; each
+label needs a directive and exemplar in `prompts/style_shots.yaml`), variant length/overlap
+bounds, repair attempts, validator confidence and second-validator policy, HNSW M/ef/thresholds
+and `passage_chunk_tokens`, near-duplicate thresholds, split fractions and salt,
+concurrency/retries/budget, per-stage models and costs.
 
 Length and count are set in config, not in prompts. `passage.target_tokens_min/max` is the whole
 document; the prompt receives the numbers as literal strings, and section count is computed. To
@@ -586,9 +602,11 @@ caveat).
 3. **Stage invalidation is local.** Changing a prompt re-runs that stage only; downstream
    artefacts are stale. Use a clean data dir for full regeneration.
 4. **Reasoning-model cost/latency.** All hosted models reason internally; 64k ceilings avoid
-   truncation but calls can take 10–30s. Concurrency 3 keeps the pilot tractable.
+   truncation but calls can take 10–30s. Concurrency 10 is the generation default; a full
+   200-family run consumes several hours and a two-digit dollar budget.
 5. **Mock workers are templated.** They exercise plumbing, not generation quality; near-duplicate
-   thresholds are relaxed in `--mock` mode for that reason.
+   thresholds are relaxed in `--mock` mode for that reason. The mock does not reliably fill the
+   long-form section band (real generation does).
 6. **No external news ingestion yet.** Local document ingestion and segmentation exist; a
    network connector must add robots/terms handling, dedupe and licence metadata.
 7. **Acceptance overshoot.** A batch may accept slightly more than `--limit`.
@@ -596,6 +614,11 @@ caveat).
    adjudication workflow yet.
 9. **Token counts are estimates.** Length bands use a word/punctuation heuristic; billed tokens
    are recorded separately from provider usage.
+10. **Style adherence is prompted, not gated.** Tone/narrative are fixed and primed with
+    directives plus exemplars, but no deterministic check verifies that a document actually reads
+    as e.g. `academic` or `humorous`. Narrative may also interact with fact density and edit
+    coverage; measure per-style acceptance on the first large run before treating all labels as
+    equally reliable.
 
 ---
 

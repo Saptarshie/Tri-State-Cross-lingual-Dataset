@@ -11,6 +11,7 @@ from .config import Config
 from .errors import StageError
 from .llm import LlmClient
 from .schema import Blueprint
+from .style import style_fields
 from .util import (
     approx_tokens,
     english_score,
@@ -66,6 +67,14 @@ def generate_passage(
 ) -> str:
     feedback = ""
     problems: list[str] = []
+    style = {
+        "genre": blueprint.genre,
+        "tone": blueprint.tone,
+        "structure": blueprint.structure,
+        "narrative": blueprint.narrative,
+        "complexity": blueprint.complexity,
+    }
+    style_vars = style_fields(cfg, style)
     for attempt in range(max_attempts):
         result = llm.structured(
             "passage",
@@ -81,7 +90,9 @@ def generate_passage(
                 "genre": blueprint.genre,
                 "tone": blueprint.tone,
                 "structure": blueprint.structure,
+                "narrative": blueprint.narrative,
                 "complexity": blueprint.complexity,
+                **style_vars,
                 "feedback": feedback or "(none)",
             },
             _PassagePayload,

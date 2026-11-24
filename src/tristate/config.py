@@ -138,7 +138,17 @@ class BlueprintCfg(BaseModel):
         ]
     )
     structures: list[str] = Field(
-        default_factory=lambda: ["paragraph", "two_paragraph", "bulleted_explanation", "qa_pair", "numbered_procedure"]
+        default_factory=lambda: [
+            "multi_section_report", "chaptered_explainer", "technical_brief",
+            "case_study", "policy_briefing", "research_summary",
+            "manual_procedure", "qa_pair",
+        ]
+    )
+    narratives: list[str] = Field(
+        default_factory=lambda: [
+            "expository", "storytelling", "first_person", "persuasive",
+            "humorous", "opinionated",
+        ]
     )
     complexities: list[str] = Field(default_factory=lambda: ["introductory", "intermediate", "advanced"])
     summary_max_chars: int = 600
@@ -249,11 +259,11 @@ class SplitsCfg(BaseModel):
 
 class ExecutionCfg(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    max_concurrency: int = 4
+    max_concurrency: int = 10
     max_retries: int = 3
     backoff_base_s: float = 1.5
     backoff_max_s: float = 30.0
-    max_total_cost_usd: float = 5.0
+    max_total_cost_usd: float = 20.0
     max_calls_per_family: int = 80
     request_timeout_s: float = 120.0
     checkpoint_every: int = 5

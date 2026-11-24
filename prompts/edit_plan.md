@@ -1,5 +1,5 @@
 ---
-version: 3.1.0
+version: 3.2.0
 stage: edit_plan
 description: Plan coordinated localized patches for one target variant of a document.
 ---
@@ -50,6 +50,9 @@ HOW TO EDIT
 - Keep the result grammatical and natural. Repair broken grammar inside the same patch.
 - Keep the result about the same length (within 25%).
 - Preserve all unrelated facts. Do not touch sentences that carry no target claim.
+- Preserve the source's register and narrative stance (person, tense, stance, comic or argued
+  mode). Do not flatten a story into a summary, a first-person account into third person, or a
+  comic passage into a neutral one.
 - The result must read as an ordinary passage. Never mention claims, evidence, labels,
   truth, verification, uncertainty about authorship, or "the text".
 - Do not use hedges that imply the original statement was wrong ("actually", "in fact",

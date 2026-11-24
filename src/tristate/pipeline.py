@@ -56,6 +56,7 @@ from .schema import (
 from .splits import SplitManager
 from .store import Store
 from .topics import (
+    expand_to_target,
     expand_topic,
     load_graph,
     record_candidate,
@@ -178,6 +179,17 @@ class Pipeline:
         if not graph.nodes:
             raise StageError("no_topics", "topic graph is empty")
 
+        per_topic = max(1, self.cfg.blueprint.candidates_per_topic)
+        expanded_for_selection = False
+        if expand and not seed_topic and not topic_ids:
+            target_leaves = max(8, math.ceil(limit / per_topic) + 8)
+            calls = expand_to_target(
+                graph, self.cfg, self.client, target_leaves, log=self.log
+            )
+            graph = load_graph(self.cfg.data_dir)
+            self.log(f"topic graph expansion: {calls} calls, {len(graph.leaves())} leaves")
+            expanded_for_selection = True
+
         if seed_topic:
             matches = [
                 n for n in graph.nodes.values()
@@ -213,13 +225,13 @@ class Pipeline:
             selected = select_topics(graph, n_topics, self.cfg.project.seed)
             nodes = [graph.nodes[s.topic_id] for s in selected]
 
-        if expand:
+        if expand and not expanded_for_selection:
             for node in list(nodes):
                 if node.depth < self.cfg.corpus.topic_max_depth and not node.child_topic_ids:
                     try:
                         children = expand_topic(graph, self.cfg, self.client, node.topic_id)
                         self.log(f"expanded topic {node.name} -> {[c.name for c in children]}")
-                    except Exception as exc:  # expansion is best-effort
+                    except Exception as exc:  # noqa: BLE001 - expansion is best-effort
                         self.log(f"topic expansion failed for {node.name}: {exc}")
 
         per_topic = max(1, self.cfg.blueprint.candidates_per_topic)
@@ -752,6 +764,7 @@ class Pipeline:
                 genre=blueprint.genre,
                 tone=blueprint.tone,
                 structure=blueprint.structure,
+                narrative=blueprint.narrative,
                 complexity=blueprint.complexity,
                 source_type=cand.source_type,
                 sections=sections or [],

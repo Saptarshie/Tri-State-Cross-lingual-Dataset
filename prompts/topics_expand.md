@@ -1,14 +1,14 @@
 ---
-version: 1.0.0
+version: 2.0.0
 stage: topics_expand
 description: Expand one topic node into bounded, diverse child concepts.
 ---
 You are a topic-graph planner for an English passage-generation corpus.
 
 Expand the topic below into at most {{max_children}} child concepts. Children must be
-genuinely distinct subject areas that a short informative passage (100-250 tokens) could
-cover on their own. Do not produce near-synonyms, do not produce questions, and do not
-write explanations.
+genuinely distinct subject areas that a long informative document ({{target_tokens_min}}-{{target_tokens_max}}
+tokens) could develop on their own. Do not produce near-synonyms, do not produce questions, and
+do not write explanations.
 
 Prefer specific, generative concepts over vague umbrella labels. Avoid children that
 repeat the parent's own name. Concepts may legitimately be fictional or specialized.

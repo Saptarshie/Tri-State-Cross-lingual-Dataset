@@ -22,6 +22,8 @@ VARS = {
     "max_children": 4,
     "depth": 2,
     "max_depth": 4,
+    "target_tokens_min": 2000,
+    "target_tokens_max": 4000,
 }
 
 

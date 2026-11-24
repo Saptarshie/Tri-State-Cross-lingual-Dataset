@@ -1,5 +1,5 @@
 ---
-version: 2.0.0
+version: 3.0.0
 stage: blueprint
 description: Plan a long-form document before any prose is written.
 ---
@@ -14,9 +14,12 @@ TOPIC PATH: {{topic_path}}
 TOPIC FOCUS: {{main_concept}}
 SOURCE MATERIAL (may be empty): {{source_excerpt}}
 GENRE: {{genre}}
-TONE: {{tone}}
+TONE: {{tone}} — {{tone_directive}}
+NARRATIVE: {{narrative}} — {{narrative_directive}}
 STRUCTURE: {{structure}}
 COMPLEXITY: {{complexity}}
+STYLE PRECEDENCE: tone governs diction/rhythm/formality; narrative governs
+structure/point-of-view/stance. Keep the narrative inside the tone's register.
 TARGET DOCUMENT LENGTH: {{token_min}}-{{token_max}} tokens (model tokens)
 TARGET FACT COUNT: {{target_fact_count}}
 SEED INTENT: {{seed_intent}}

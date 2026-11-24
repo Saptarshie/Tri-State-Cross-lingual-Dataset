@@ -187,6 +187,8 @@ def expand_topic(
             "max_children": cfg.corpus.max_children_per_topic,
             "depth": node.depth + 1,
             "max_depth": cfg.corpus.topic_max_depth,
+            "target_tokens_min": cfg.passage.target_tokens_min,
+            "target_tokens_max": cfg.passage.target_tokens_max,
         },
         _ExpandSchema,
         cfg.llm.generator,
@@ -232,6 +234,55 @@ class _ExpandSchema(BaseModel):
 # --------------------------------------------------------------------------- #
 # Selection
 # --------------------------------------------------------------------------- #
+
+
+def expand_to_target(
+    graph: TopicGraph,
+    cfg: Config,
+    llm: LlmClient,
+    target_leaves: int,
+    max_calls: int = 80,
+    log=None,
+) -> int:
+    """Grow the graph breadth-first until it has enough open leaves.
+
+    One LLM call per expanded node; a node is expanded at most once because
+    expansion is skipped when it already has children. This is what makes a
+    100+ family run possible from a small seed taxonomy.
+    """
+    calls = 0
+    while calls < max_calls:
+        open_leaves = [
+            n for n in graph.leaves()
+            if n.status == "open" and n.depth < cfg.corpus.topic_max_depth
+        ]
+        if len(open_leaves) >= target_leaves:
+            break
+        parents = [
+            n for n in open_leaves
+            if not n.child_topic_ids and n.depth < cfg.corpus.topic_max_depth
+        ]
+        if not parents:
+            break
+        progressed = 0
+        for node in parents:
+            if calls >= max_calls:
+                break
+            if len([n for n in graph.leaves() if n.status == "open"]) >= target_leaves:
+                break
+            try:
+                created = expand_topic(graph, cfg, llm, node.topic_id)
+            except Exception as exc:  # noqa: BLE001 - expansion is best-effort
+                if log:
+                    log(f"topic expansion failed for {node.name}: {exc}")
+                continue
+            calls += 1
+            progressed += len(created)
+            if log and created:
+                log(f"expanded {node.name} -> {len(created)} children")
+        if not progressed:
+            break
+    return calls
 
 
 def select_topics(

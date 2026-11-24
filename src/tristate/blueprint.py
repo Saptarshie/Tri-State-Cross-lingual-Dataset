@@ -12,6 +12,7 @@ from .errors import StageError
 from .ids import blueprint_id as make_blueprint_id
 from .llm import LlmClient
 from .schema import Blueprint, BlueprintCandidate
+from .style import narrative_directive, tone_directive
 from .util import stable_seed
 
 
@@ -38,6 +39,7 @@ def choose_style(cfg: Config, candidate: BlueprintCandidate, novelty_report: dic
         "genre": pick(cfg.blueprint.genres, "genre"),
         "tone": pick(cfg.blueprint.tones, "tone"),
         "structure": pick(cfg.blueprint.structures, "structure"),
+        "narrative": pick(cfg.blueprint.narratives, "narrative"),
         "complexity": cfg.blueprint.complexities[rng.randrange(len(cfg.blueprint.complexities))],
     }
 
@@ -67,6 +69,9 @@ def plan_blueprint(
             "genre": style["genre"],
             "tone": style["tone"],
             "structure": style["structure"],
+            "narrative": style["narrative"],
+            "tone_directive": tone_directive(cfg, style["tone"]),
+            "narrative_directive": narrative_directive(cfg, style["narrative"]),
             "complexity": style["complexity"],
             "token_min": token_min,
             "token_max": token_max,
@@ -101,6 +106,7 @@ def plan_blueprint(
         genre=style["genre"],
         tone=style["tone"],
         structure=style["structure"],
+        narrative=style["narrative"],
         complexity=style["complexity"],
         target_fact_count=max(planned_facts, min(12, int(payload.target_fact_count or planned_facts))),
         target_length_tokens=[token_min, token_max],

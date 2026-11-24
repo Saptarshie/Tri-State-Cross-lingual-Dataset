@@ -1,0 +1,222 @@
+version: 1
+# Few-shot style priming. The examples teach REGISTER and NARRATIVE MODE only.
+# Their topics and wording must never be reused in generated data.
+tones:
+  neutral_explanatory:
+    directive: >-
+      Plain, even register. Mechanism before conclusion. No evaluative adjectives,
+      no rhetorical questions, no address to the reader. Medium sentences; define
+      terms at first use.
+    example:
+      input: "Explain how congestion pricing reduces traffic."
+      output: >-
+        Congestion pricing charges drivers a fee to enter busy areas at peak times.
+        Some drivers shift trips off-peak, switch to transit, or combine errands.
+        Because road space is fixed, flow degrades sharply once a road nears
+        capacity, so removing even a small share of vehicles raises average speeds
+        noticeably.
+  formal:
+    directive: >-
+      Elevated, impersonal register. No contractions, idioms, or second person.
+      Precise vocabulary, measured cadence, full sentences. Qualify conclusions
+      where evidence warrants.
+    example:
+      input: "Explain how congestion pricing reduces traffic."
+      output: >-
+        Congestion pricing imposes a charge on vehicles entering designated zones
+        during periods of high demand. A proportion of motorists adjust their
+        behaviour by rescheduling journeys, adopting public transport, or
+        consolidating trips. Since urban road capacity is fixed, modest reductions
+        in volume yield disproportionate improvements in flow.
+  conversational:
+    directive: >-
+      Relaxed, spoken rhythm. Contractions and second person. Short sentences mixed
+      with longer ones. Concrete analogies welcome. Friendly, not jokey; no dated
+      slang, no exclamation marks.
+    example:
+      input: "Explain how congestion pricing reduces traffic."
+      output: >-
+        Here's the idea: you charge people a fee to drive into the busy part of
+        town at rush hour. Some shift their trip earlier, some take the train, some
+        combine errands. Roads tip into gridlock fast once they're near capacity,
+        so even a small drop in cars makes traffic move noticeably better.
+  academic:
+    directive: >-
+      Scholarly register. Hedge claims to match evidence. Name mechanisms and
+      constructs precisely; define them. Complex but grammatical sentences; no
+      second person. Refer to established findings generically and never fabricate
+      citations.
+    example:
+      input: "Explain how congestion pricing reduces traffic."
+      output: >-
+        Congestion pricing internalises the external costs of peak-period vehicle
+        use by imposing a charge on road access. Observed implementations indicate
+        elastic responses along several margins, including departure-time shifts,
+        modal substitution, and trip consolidation. Because the speed-flow
+        relationship is nonlinear near capacity, marginal reductions in volume can
+        produce supralinear gains in throughput.
+  concise_journalistic:
+    directive: >-
+      Wire-service style. Bottom line first (inverted pyramid). One idea per
+      sentence, mostly under 20 words. Active voice, concrete verbs, numbers where
+      available. No address to the reader.
+    example:
+      input: "Explain how congestion pricing reduces traffic."
+      output: >-
+        Congestion pricing cuts traffic by charging drivers to enter busy zones at
+        peak hours. Fees push some commuters onto trains or into off-peak slots.
+        Roads near capacity jam easily, so small drops in volume speed up flow. The
+        result is shorter, more reliable trips.
+  instructional:
+    directive: >-
+      Teacher-to-learner register. State the goal first, then numbered steps or a
+      causal chain, one idea per step. Second person and imperatives where a
+      procedure exists. End with a check or expected result.
+    example:
+      input: "Explain how congestion pricing reduces traffic."
+      output: >-
+        Goal: see why a road fee reduces traffic. 1. Start with a fixed resource:
+        a road holds only so many cars per hour. 2. Add a peak-hour fee. Some
+        drivers now switch time, route, or mode. 3. Watch the margin: near
+        capacity, removing a few cars frees a lot of flow. Check: if demand were
+        far below capacity, the fee would change little.
+  analytical:
+    directive: >-
+      Reasoning-forward register. Decompose into variables and mechanisms; compare
+      magnitudes; state assumptions and boundary conditions. Close with the
+      conditions under which the conclusion holds or fails.
+    example:
+      input: "Explain how congestion pricing reduces traffic."
+      output: >-
+        The effect depends on three variables: fee level, demand elasticity, and
+        proximity to capacity. Near capacity, flow is highly sensitive to volume,
+        so a small reduction in vehicles can restore free flow; far below capacity,
+        the same reduction changes little. The policy works best where commuters
+        have substitutes.
+narratives:
+  expository:
+    directive: >-
+      Neutral informational mode. Topic first, then mechanism, evidence and
+      consequence. No character arc, no overt stance, no narrator persona.
+    example:
+      input: "Explain how a heat pump works."
+      output: >-
+        A heat pump moves heat between locations instead of generating it. In
+        heating mode a compressor-driven refrigerant cycle extracts heat from
+        outdoor air or the ground and releases it indoors. Moving heat takes less
+        energy than creating it, so the device delivers several units of heat per
+        unit of electricity.
+  storytelling:
+    directive: >-
+      Organise as an arc: a concrete character or situation, tension, a turn, and
+      a resolution that carries the explanation. Scene-first opening; facts emerge
+      through events. Third person unless the tone requires otherwise.
+    example:
+      input: "Explain why backups matter."
+      output: >-
+        Meera had been writing her thesis for two years when the laptop went silent
+        mid-sentence. A technician slid the dead machine back across the counter
+        and shook his head. She went home and opened the external drive she had
+        meant to update since March. It held a draft from October. That night she
+        bought a second drive and set it to back up every hour.
+  first_person:
+    directive: >-
+      Narrate from inside an "I": the narrator's experience, decisions, and
+      observations carry the explanation; reflection follows event. The "I" is a
+      constructed persona, never the user or a real named individual.
+    example:
+      input: "Explain what a heat pump does."
+      output: >-
+        I installed the unit expecting a box that made heat, and I was wrong about
+        what it was. The first cold morning I stood by the outdoor fan and felt air
+        leaving it colder than the air arriving. It was taking warmth out of the
+        November air and carrying it into my hallway. My meter confirmed the
+        arithmetic: I had bought a mover, not a maker.
+  persuasive:
+    directive: >-
+      Organise as an argument: claim up front, two or three reasons ordered by
+      strength, acknowledge the strongest counterpoint, close with a restated claim
+      or a concrete action. Evidence persuades, not adjectives.
+    example:
+      input: "Make the case for congestion pricing."
+      output: >-
+        Cities should price road access at peak hours. First, it targets the actual
+        problem, scarcity of road space at specific times, rather than punishing
+        all driving. Second, the revenue can fund the transit alternatives that
+        make the fee fair. The strongest objection is equity: a flat fee weighs
+        more on low-income drivers. That objection is real and answerable with
+        discounts and reinvestment, not abandonment.
+  humorous:
+    directive: >-
+      Organise around comic observation: setup, incongruity, punchline; playful
+      analogies and light exaggeration. The explanation must stay correct; jokes
+      ride on the facts and never replace them. Aim at situations, not groups.
+    example:
+      input: "Explain what a heat pump does."
+      output: >-
+        A heat pump is a refrigerator that has chosen a life of crime: instead of
+        keeping your leftovers cold, it robs the outdoors of warmth and fences it
+        inside your house. Even winter air holds heat the way a broke friend holds
+        loose change, not much, but enough if you are persistent. The compressor
+        spends one unit of electricity to shake three or four units of heat out of
+        the cold air's pockets.
+  opinionated:
+    directive: >-
+      Organise around a stated verdict: open with the position, support with
+      selected evidence, concede limits briefly, close by sharpening the verdict.
+      Explicitly a view, not a survey. Do not end with an instruction to the
+      reader (that is persuasive).
+    example:
+      input: "Give a take on congestion pricing."
+      output: >-
+        Congestion pricing is the rare policy that treats drivers like adults:
+        here is the real cost of your trip at the real time you want to take it;
+        decide. Every alternative, plate rationing, lane bans, endless road
+        widening, pretends the scarcity can be engineered away. It cannot. The fee
+        is not a punishment; it is the truth printed on a gantry.
+composed:
+  "academic|humorous":
+    input: "Explain procrastination."
+    output: >-
+      Procrastination, defined here as the voluntary delay of an intended action
+      despite expected harm, has been studied extensively and, regrettably, rarely
+      finished on time. Evidence suggests the behaviour reflects difficulties in
+      emotion regulation rather than poor time management, a finding that will
+      comfort anyone currently reading this abstract instead of writing their own.
+      Further research is warranted, though the present author concedes that it may
+      be conducted next week.
+  "formal|first_person":
+    input: "Describe a summer onboarding programme."
+    output: >-
+      I write to describe my experience of the onboarding programme in which I
+      participated between June and August. Upon arrival I was assigned a mentor
+      who, in my assessment, was instrumental in my adjustment to the team's
+      working practices. I recall that my initial uncertainty regarding the
+      codebase diminished considerably within the first fortnight.
+  "concise_journalistic|storytelling":
+    input: "Describe a market stall opening during a flood."
+    output: >-
+      Rain was still falling on the Riverton market at 6 a.m. Friday when Salim
+      Qureshi lifted the shutter on his spice stall, the first in 31 years to open
+      with water at its threshold. The flood reached his ankles. He opened anyway,
+      he said, because his customers had nowhere else to go. By nine, 40 people had
+      waded in.
+  "instructional|opinionated":
+    input: "Explain how to choose a code editor."
+    output: >-
+      Start by listing the languages you actually write, then test only editors
+      that support them without plugins. Next, check startup time and memory on
+      your own machine. Then read the keybinding editor before installing themes;
+      you will live there. Finally, keep the editor you can configure in an
+      afternoon. My verdict: pick the boring editor that stays out of the way; the
+      clever one will still be clever when you have work to finish.
+  "analytical|persuasive":
+    input: "Argue for later school start times."
+    output: >-
+      Later start times are the better policy because the mechanism is biological,
+      not motivational. Adolescent sleep timing shifts later during puberty, while
+      most schools start before the circadian shift has resolved. The effect is
+      largest for students already near the chronic-sleep threshold. The main cost
+      is transport scheduling, which is a fixed constraint rather than a reason to
+      keep the current start time. Districts that can re-sequence buses should
+      move first.

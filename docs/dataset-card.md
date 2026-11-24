@@ -45,11 +45,13 @@ models, problems), `splits.json`, `README.md`.
 ## 3. Construction
 
 1. A topic is selected from a seeded, coverage-tracked graph (inverse-frequency score with
-   parent-branch diversity); style is sampled across 8 genres, 7 tones and 5 structures.
+   parent-branch diversity); style is sampled across 12 genres, 7 tones, 8 structures, 6
+   narrative modes and 3 complexity levels.
 2. An LLM plans a blueprint (concept, subtopics, expected entities/relations, fact count) after a
    novelty report over previously accepted blueprints.
-3. A base passage is generated and screened deterministically (length band, Latin script, no
-   task/meta language, no markdown in prose structures).
+3. A base document (2k–4k model tokens by default) is generated section by section and screened
+   deterministically (length band, Latin script, no task/meta language, no markdown in prose
+   structures).
 4. Facts are extracted with verbatim sentence-level evidence spans; 2–5 atomic claims are
    generated and filtered for single-proposition form, entity presence and passage support.
 5. An independent validator checks that the base entails every claim; claims that fail are
@@ -72,7 +74,8 @@ Prompts are versioned in `prompts/`; the config hash and prompt versions are rec
 
 `family_id`, `split_group_id`, `language`, `script`, `locale`, `language_generation_method`,
 `source` (mode, provenance, licence note), `topic` (path, node IDs), `blueprint` (concept,
-subtopics, planned relations, style), `base_passage` (text, tokens, style, checksum),
+subtopics, planned relations, style including genre/tone/narrative/structure/complexity),
+`base_passage` (text, tokens, style, checksum),
 `semantic_representation` (summary, entities, facts with spans), `claim_set` (claim text, type,
 fact links, evidence spans), `variants` (three labelled variants with text, checksum, edit
 history/diff, relation rows, per-variant graph diff and validation), `generation` (models, prompt

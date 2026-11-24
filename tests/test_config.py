@@ -52,6 +52,7 @@ def test_prompts_load_and_render():
     rendered, version = lib.render(
         "topics_expand", topic_name="Databases", topic_description="x",
         existing_children="(none)", max_children=4, depth=1, max_depth=3,
+        target_tokens_min=2000, target_tokens_max=4000,
     )
     assert "Databases" in rendered and "+" in version
     with pytest.raises(PromptError):

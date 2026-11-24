@@ -76,14 +76,24 @@ clear error; rebuild with `index build` after choosing one.
 .venv/Scripts/python.exe -m tristate run --limit 5 --stop-after blueprint
 .venv/Scripts/python.exe -m tristate stage variant --limit 5
 .venv/Scripts/python.exe -m tristate resume --limit 50
+
+# large resumable batch (200 base documents = 600 variants), concurrency 10
+env -u PYTHONPATH .venv/Scripts/python.exe scripts/generate_dataset.py \
+  --data-dir data-v5 --target-families 200 --concurrency 10 --budget-usd 25
 ```
+
+`generate_dataset.py` seeds/expands the topic graph, runs batches until the accepted-family
+target is met, and checkpoints `batch_manifest.json` after every round. Re-running the same
+command resumes; completed candidates are skipped. If the provider or host dies, run it again.
 
 Interrupting a run is safe: press Ctrl-C, or kill the process. State is in SQLite plus atomic
 artefacts; `resume` continues from the last successful stage.
 
-Cost/latency (short pilot, concurrency 3): ~14 provider calls and ~$0.008 per accepted family,
-roughly 1–2 minutes per family wall-clock. Budgets: `execution.max_total_cost_usd`,
-`execution.max_calls_per_family` (default 80; long documents need more calls).
+Cost/latency (2k–4k documents, concurrency 10): roughly 50 provider calls and $0.05 per accepted
+family; a 2-family pilot took ~20 minutes wall-clock when only two families were in flight.
+Budget 200 families at several hours and roughly $10–20 including repairs. Budgets:
+`execution.max_total_cost_usd`, `execution.max_calls_per_family` (default 80; long documents
+need more calls).
 
 ### 3.1 Document length and claim count
 
@@ -118,6 +128,31 @@ Long documents are edited from an **editing view** (claim evidence sentences ±
 `variants.edit_view_sentences`, capped by `edit_view_max_sentences`); patches still target global
 sentence IDs in the full document. This keeps the editor prompt bounded without changing the
 patch contract.
+
+### 3.2 Style axes and in-context priming
+
+`blueprint.tones` (7 register labels) and `blueprint.narratives` (6 modes) are sampled once per
+family and shared by all three variants. `prompts/style_shots.yaml` holds one directive and one
+short exemplar per label, plus composed exemplars for conflict pairs. Section and short-passage
+prompts receive the rendered priming block; the blueprint receives directives only.
+
+Adding a new label requires **both** a config entry and a matching YAML block
+(`tones.<label>` or `narratives.<label>` with `directive` and `example`). Missing entries fall
+back to a generic directive and no exemplar — the run still works, but the label is weakly
+specified. `tests/test_style.py` enforces coverage of every configured label.
+
+Styles are not deterministically verified. To inspect balance after a run:
+
+```bash
+env -u PYTHONPATH .venv/Scripts/python.exe - <<'PY'
+import json, glob
+from collections import Counter
+rows=[json.load(open(f))["base_passage"] for f in glob.glob("data-v5/families/FAM_*.json")]
+print("tones", Counter(r["tone"] for r in rows))
+print("narratives", Counter(r["narrative"] for r in rows))
+print("genres", Counter(r["genre"] for r in rows))
+PY
+```
 
 ---
 

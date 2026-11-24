@@ -19,6 +19,7 @@ from .config import Config
 from .errors import StageError
 from .llm import LlmClient
 from .schema import Blueprint, DocumentPlan, PassageSection, SectionPlan
+from .style import style_fields
 from .util import (
     approx_tokens,
     english_score,
@@ -166,6 +167,16 @@ def generate_document(
 ) -> tuple[str, list[PassageSection], dict[str, Any]]:
     """Write the document. Section artefacts are keyed by plan + prompt version."""
     p = cfg.passage
+    style_vars = style_fields(
+        cfg,
+        {
+            "genre": blueprint.genre,
+            "tone": blueprint.tone,
+            "structure": blueprint.structure,
+            "narrative": blueprint.narrative,
+            "complexity": blueprint.complexity,
+        },
+    )
     texts: list[str] = []
     drafts: list[SectionDraft] = []
     reused = 0
@@ -201,7 +212,9 @@ def generate_document(
                         "genre": blueprint.genre,
                         "tone": blueprint.tone,
                         "structure": blueprint.structure,
+                        "narrative": blueprint.narrative,
                         "complexity": blueprint.complexity,
+                        **style_vars,
                         "token_min": section.target_tokens,
                         "token_max": int(section.target_tokens * 1.25),
                         "word_min": int(section.target_tokens / 0.75 * 0.9),
@@ -272,7 +285,9 @@ def generate_document(
                 "genre": blueprint.genre,
                 "tone": blueprint.tone,
                 "structure": blueprint.structure,
+                "narrative": blueprint.narrative,
                 "complexity": blueprint.complexity,
+                **style_vars,
                 "token_min": int(shortest.plan.target_tokens * 1.3),
                 "token_max": int(shortest.plan.target_tokens * 1.6),
                 "word_min": int(shortest.plan.target_tokens / 0.75),

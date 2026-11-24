@@ -1,5 +1,5 @@
 ---
-version: 1.0.0
+version: 2.0.0
 stage: section
 description: Write one section of a long-form document in a fixed voice.
 ---
@@ -22,8 +22,11 @@ ALREADY WRITTEN (do not repeat these points, do not paraphrase them):
 END OF THE PREVIOUS SECTION (for continuity; do not copy it):
 {{prior_tail}}
 
+STYLE PRIMING
+{{style_priming}}
+
 STYLE
-- Genre: {{genre}}. Tone: {{tone}}. Structure: {{structure}}. Complexity: {{complexity}}.
+- Genre: {{genre}}. Tone: {{tone}}. Narrative: {{narrative}}. Structure: {{structure}}. Complexity: {{complexity}}.
 - Length: about {{token_min}}-{{token_max}} model tokens (roughly {{word_min}}-{{word_max}} words).
 - Plain prose. No document title, no section heading, no markdown, no bullet characters
   unless the structure explicitly calls for a list or procedure.

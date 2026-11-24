@@ -2,7 +2,7 @@
 
 Snapshot of what exists, what was measured, and what is next. Update after every substantive run.
 
-Last updated: 2026-11-25 02:40 IST (long-form generator verified; `pilot-03-longform` exported).
+Last updated: 2026-11-25 05:20 IST (narrative axis added; 200-family batch running in `data-v5`).
 
 ---
 
@@ -15,6 +15,7 @@ Milestones 0–3 of the objective are implemented and exercised against the live
 | package, config, schema, store | complete |
 | topic graph + coverage scheduler | complete (LLM expansion, local corpus ingestion) |
 | blueprint → document plan → sections → extraction → claims | complete, real-provider verified (short and 3k-token long-form) |
+| style axes: genre/tone/structure/narrative/complexity | complete; narrative added, primed with directives + exemplars |
 | coordinated tri-state editing + bounded repair | complete |
 | independent validation + deterministic gates | complete (second validator, disagreement queue) |
 | graph diff | implemented, advisory (`require_graph_diff: false`) |
@@ -36,12 +37,22 @@ families are immutable; quarantined candidates keep their workdir and reasons.
 - Models: **all stages `deepseek/deepseek-v4.1-flash`** (operator changed every stage; this removes
   the cross-family separation the validator design preferred — see limitations).
 - Embeddings: local Ollama `embeddinggemma` (768-d), cached under `data/embeddings/`.
-- Tests: `130 passed` (offline); `ruff check --select F,E9` clean.
+- Tests: `133 passed` (offline); `ruff check --select F,E9` clean.
 - Base-document length: configurable (`passage.target_tokens_*`), default 2,000–4,000; the
   pilot-02 export predates this and is the short-passage regime.
+- Style: tone (7 registers) and narrative (6 modes: `expository`, `storytelling`,
+  `first_person`, `persuasive`, `humorous`, `opinionated`) sampled once per family; directives
+  and exemplars live in `prompts/style_shots.yaml`.
 
 Note: every command must run with `env -u PYTHONPATH` on this host (foreign `PYTHONPATH` shadows
 the project's packages).
+
+**Scale run in progress.** `data-v5` is targeting **200 base documents / 600 variants** with
+`concurrency: 10`, budget `$25`, driven by `scripts/generate_dataset.py`. Progress and per-round
+counts are in `data-v5/batch_manifest.json`; `scripts/finalize_when_done.py` indexes and exports
+`v1-200` when the batch reports `complete`. The first accepted families confirm the narrative
+axis is exercising (`persuasive`, `humorous`, `first_person` observed), not collapsing to
+`expository`.
 
 ---
 

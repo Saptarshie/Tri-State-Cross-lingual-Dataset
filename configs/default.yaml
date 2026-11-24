@@ -1,0 +1,182 @@
+project:
+  name: tri_state_counterfactual_dataset
+  language: en
+  script: Latin
+  locale: en_US
+  output_dir: data
+  seed: 20261124
+
+corpus:
+  enabled_tracks:
+    - topic_generated
+    - external_ingestion
+  topic_max_depth: 3
+  max_children_per_topic: 8
+  passage_token_min: 80
+  passage_token_max: 300
+  retain_source_documents: true
+  local_source_dirs: []
+  news_feeds: []
+  news_fetch_enabled: false
+  dedupe_similarity: 0.9
+
+blueprint:
+  candidates_per_topic: 2
+  novelty_top_k: 10
+  similarity_threshold: 0.9
+  genres:
+    - news_report
+    - encyclopedia_entry
+    - textbook_excerpt
+    - technical_explanation
+    - research_summary
+    - business_brief
+    - faq_answer
+    - product_documentation
+    - interview_excerpt
+    - field_report
+    - policy_brief
+    - manual_procedure
+  tones:
+    - neutral_explanatory
+    - formal
+    - conversational
+    - academic
+    - concise_journalistic
+    - instructional
+    - analytical
+  structures:
+    - paragraph
+    - two_paragraph
+    - bulleted_explanation
+    - qa_pair
+    - numbered_procedure
+  complexities:
+    - introductory
+    - intermediate
+    - advanced
+  summary_max_chars: 600
+
+claims:
+  min_claims_per_family: 2
+  max_claims_per_family: 5
+  min_fact_confidence: 0.55
+  require_atomic_claims: true
+  max_claim_chars: 220
+
+variants:
+  required_labels: [SUPPORTED, CONTRADICTED, UNSUPPORTED]
+  require_all_claims_to_match_label: true
+  max_edit_repair_attempts: 2
+  prefer_patch_editing: true
+  min_length_ratio: 0.45
+  max_length_ratio: 1.9
+  min_content_overlap: 0.25
+
+hnsw:
+  enabled: true
+  indexes: [blueprint, passage, fact_claim, edit_signature]
+  m: 16
+  ef_construction: 200
+  ef_search: 64
+  top_k: 10
+  dim: 768
+  embedder: ollama
+  ollama_base_url: http://127.0.0.1:11434
+  ollama_model: embeddinggemma
+  embed_batch: 16
+  embed_timeout_s: 120
+  api_model: ""
+  near_duplicate_cosine: 0.93
+  near_duplicate_jaccard: 0.82
+  split_aware: true
+
+validation:
+  require_independent_verification: true
+  require_evidence_spans: true
+  allow_world_truth_gate: false
+  quarantine_mixed_families: true
+  human_audit_fraction: 0.05
+  second_validator_confidence: 0.75
+  min_relation_confidence: 0.5
+  require_graph_diff: false
+  max_graph_diff_misses: 1
+  second_validator_on_failure: true
+  sample_second_validator: 0.1
+
+splits:
+  train: 0.8
+  validation: 0.1
+  test: 0.1
+  group_key: passage_family_id
+  salt: tristate-v1
+  duplicate_clustering: true
+
+execution:
+  max_concurrency: 3
+  max_retries: 3
+  backoff_base_s: 1.5
+  backoff_max_s: 30.0
+  max_total_cost_usd: 5.0
+  max_calls_per_family: 40
+  request_timeout_s: 240.0
+  checkpoint_every: 5
+  retry_permanent_errors: false
+
+llm:
+  base_url: https://api.commandcode.ai/provider/v1
+  api_key_env: LLM_API_KEY
+  user_agent: "Mozilla/5.0 (compatible; tristate-factory/0.1)"
+  json_mode: true
+  json_schema_mode: false
+  schema_repair_attempts: 1
+  cache_enabled: true
+  live_probe_on_start: true
+  generator:
+    name: deepseek/deepseek-v4.1-flash
+    temperature: 0.85
+    max_tokens: 64000
+    cost_in_per_mtok: 0.14
+    cost_out_per_mtok: 0.28
+  extractor:
+    name: xiaomi/mimo-v2.6-flash
+    temperature: 0.0
+    max_tokens: 64000
+    cost_in_per_mtok: 0.14
+    cost_out_per_mtok: 0.28
+  claims:
+    name: xiaomi/mimo-v2.6-flash
+    temperature: 0.2
+    max_tokens: 64000
+    cost_in_per_mtok: 0.14
+    cost_out_per_mtok: 0.28
+  editor:
+    name: deepseek/deepseek-v4.1-flash
+    temperature: 0.5
+    max_tokens: 64000
+    cost_in_per_mtok: 0.14
+    cost_out_per_mtok: 0.28
+  validator:
+    name: google/gemini-3.8-flash
+    temperature: 0.0
+    max_tokens: 64000
+    cost_in_per_mtok: 0.14
+    cost_out_per_mtok: 0.28
+  validator_second:
+    name: xiaomi/mimo-v2.6-flash
+    temperature: 0.0
+    max_tokens: 64000
+    cost_in_per_mtok: 0.14
+    cost_out_per_mtok: 0.28
+  fallback_models: []
+
+quality:
+  min_english_score: 0.97
+  forbid_meta_statements: true
+  min_distractor_length_ratio: 0.45
+  max_repeated_sentence_ratio: 0.25
+  shortcut_audit: true
+  shortcut_audit_flag_accuracy: 0.72
+
+prompts:
+  dir: prompts

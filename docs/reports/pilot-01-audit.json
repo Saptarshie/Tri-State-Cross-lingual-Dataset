@@ -1,0 +1,792 @@
+{
+  "generated_at": "2026-11-24T17:56:10+00:00",
+  "config_hash": "2c0f4f715062b3c65518710cd9442d8ac9acafa5fac58cf4ad5f4655d19b7cb8",
+  "families": 14,
+  "candidates": {
+    "total": 18,
+    "by_status": {
+      "QUARANTINED": 2,
+      "ACCEPTED": 14,
+      "PENDING": 2
+    }
+  },
+  "acceptance": {
+    "families_accepted": 14,
+    "quarantined": 2,
+    "acceptance_rate": 0.7778,
+    "by_reason": {
+      "llm_permanent": 2
+    }
+  },
+  "dataset": {
+    "variants": 42,
+    "labels_per_family": {
+      "all_three": 14
+    },
+    "claims": 51,
+    "claim_count_distribution": {
+      "n": 14,
+      "counts": {
+        "4": 7,
+        "3": 3,
+        "2": 2,
+        "5": 2
+      },
+      "mean": 3.643
+    },
+    "claim_types": {
+      "COMPARATIVE": 7,
+      "PROCEDURAL": 10,
+      "TEMPORAL": 11,
+      "LOCATION": 2,
+      "NUMERICAL": 8,
+      "ENTITY_RELATION": 4,
+      "CAUSAL": 4,
+      "PURPOSE": 5
+    },
+    "edit_operations": {
+      "TEMPORAL_MUTATION": 8,
+      "RELATION_REVERSAL": 7,
+      "NUMERICAL_MUTATION": 18,
+      "POLARITY_CHANGE": 4,
+      "REPLACE_CLAUSE": 45,
+      "ENTITY_SUBSTITUTION": 8,
+      "NEUTRAL_REWRITE": 14,
+      "CATEGORY_SUBSTITUTION": 2
+    },
+    "passage_tokens": {
+      "mean": 127.4,
+      "min": 72,
+      "max": 169
+    },
+    "base_tokens": {
+      "mean": 133.2,
+      "min": 99,
+      "max": 169
+    },
+    "genres": {
+      "news_report": 3,
+      "faq_answer": 1,
+      "encyclopedia_entry": 2,
+      "field_report": 2,
+      "textbook_excerpt": 1,
+      "technical_explanation": 3,
+      "research_summary": 2
+    },
+    "tones": {
+      "neutral_explanatory": 4,
+      "analytical": 2,
+      "formal": 3,
+      "conversational": 2,
+      "academic": 2,
+      "concise_journalistic": 1
+    },
+    "structures": {
+      "paragraph": 2,
+      "two_paragraph": 2,
+      "numbered_procedure": 4,
+      "bulleted_explanation": 4,
+      "qa_pair": 2
+    },
+    "splits": {
+      "train": 14
+    },
+    "topics": {
+      "Technology": 2,
+      "Health > Nutrition": 2,
+      "Science > Materials Science": 2,
+      "Technology > Consumer Devices": 2,
+      "Business > Consumer Finance": 2,
+      "Environment > Urban Water Systems": 2,
+      "Culture > Film Production": 2
+    }
+  },
+  "validation": {
+    "variants_with_validation": 42,
+    "validator_agreement_mean": 1.0,
+    "graph_diff_misses": 62,
+    "human_audit_flags": 1
+  },
+  "novelty": {
+    "max_cosine_mean": 0.311,
+    "max_cosine_p95": 0.5476,
+    "near_duplicates": 0
+  },
+  "calls": {
+    "by_stage": [
+      {
+        "stage": "base_check",
+        "model": "google/gemini-3.8-flash",
+        "status": "OK",
+        "calls": 14,
+        "prompt_tokens": 14152,
+        "completion_tokens": 11906,
+        "cost_usd": 0.005315,
+        "cached": 0,
+        "avg_latency_ms": 6138.9
+      },
+      {
+        "stage": "blueprint",
+        "model": "deepseek/deepseek-v4.1-flash",
+        "status": "OK",
+        "calls": 16,
+        "prompt_tokens": 8153,
+        "completion_tokens": 12929,
+        "cost_usd": 0.004192,
+        "cached": 0,
+        "avg_latency_ms": 11333.8
+      },
+      {
+        "stage": "claims",
+        "model": "xiaomi/mimo-v2.6-flash",
+        "status": "OK",
+        "calls": 14,
+        "prompt_tokens": 19191,
+        "completion_tokens": 19517,
+        "cost_usd": 0.008152,
+        "cached": 0,
+        "avg_latency_ms": 14681.6
+      },
+      {
+        "stage": "extract",
+        "model": "deepseek/deepseek-v4.1-flash",
+        "status": "SCHEMA_ERROR",
+        "calls": 2,
+        "prompt_tokens": 1657,
+        "completion_tokens": 4000,
+        "cost_usd": 0.0,
+        "cached": 0,
+        "avg_latency_ms": 24556.5
+      },
+      {
+        "stage": "extract",
+        "model": "xiaomi/mimo-v2.6-flash",
+        "status": "OK",
+        "calls": 14,
+        "prompt_tokens": 11510,
+        "completion_tokens": 29527,
+        "cost_usd": 0.009879,
+        "cached": 0,
+        "avg_latency_ms": 15660.2
+      },
+      {
+        "stage": "extract_CONTRADICTED",
+        "model": "xiaomi/mimo-v2.6-flash",
+        "status": "OK",
+        "calls": 16,
+        "prompt_tokens": 13228,
+        "completion_tokens": 32861,
+        "cost_usd": 0.011053,
+        "cached": 0,
+        "avg_latency_ms": 24675.8
+      },
+      {
+        "stage": "extract_SUPPORTED",
+        "model": "xiaomi/mimo-v2.6-flash",
+        "status": "OK",
+        "calls": 14,
+        "prompt_tokens": 11510,
+        "completion_tokens": 27377,
+        "cost_usd": 0.009277,
+        "cached": 0,
+        "avg_latency_ms": 17750.9
+      },
+      {
+        "stage": "extract_UNSUPPORTED",
+        "model": "xiaomi/mimo-v2.6-flash",
+        "status": "OK",
+        "calls": 16,
+        "prompt_tokens": 12411,
+        "completion_tokens": 24575,
+        "cost_usd": 0.008619,
+        "cached": 0,
+        "avg_latency_ms": 14805.1
+      },
+      {
+        "stage": "passage",
+        "model": "deepseek/deepseek-v4.1-flash",
+        "status": "OK",
+        "calls": 17,
+        "prompt_tokens": 40384,
+        "completion_tokens": 20774,
+        "cost_usd": 0.0106,
+        "cached": 0,
+        "avg_latency_ms": 14350.0
+      },
+      {
+        "stage": "validation_CONTRADICTED",
+        "model": "google/gemini-3.8-flash",
+        "status": "OK",
+        "calls": 16,
+        "prompt_tokens": 16292,
+        "completion_tokens": 15585,
+        "cost_usd": 0.006645,
+        "cached": 0,
+        "avg_latency_ms": 8085.9
+      },
+      {
+        "stage": "validation_CONTRADICTED",
+        "model": "xiaomi/mimo-v2.6-flash",
+        "status": "OK",
+        "calls": 3,
+        "prompt_tokens": 3054,
+        "completion_tokens": 3197,
+        "cost_usd": 0.001323,
+        "cached": 0,
+        "avg_latency_ms": 21111.0
+      },
+      {
+        "stage": "validation_SUPPORTED",
+        "model": "google/gemini-3.8-flash",
+        "status": "OK",
+        "calls": 14,
+        "prompt_tokens": 14108,
+        "completion_tokens": 10981,
+        "cost_usd": 0.00505,
+        "cached": 0,
+        "avg_latency_ms": 6182.9
+      },
+      {
+        "stage": "validation_UNSUPPORTED",
+        "model": "google/gemini-3.8-flash",
+        "status": "OK",
+        "calls": 16,
+        "prompt_tokens": 15412,
+        "completion_tokens": 27053,
+        "cost_usd": 0.009733,
+        "cached": 0,
+        "avg_latency_ms": 12525.0
+      },
+      {
+        "stage": "validation_UNSUPPORTED",
+        "model": "xiaomi/mimo-v2.6-flash",
+        "status": "OK",
+        "calls": 4,
+        "prompt_tokens": 3499,
+        "completion_tokens": 2779,
+        "cost_usd": 0.001268,
+        "cached": 0,
+        "avg_latency_ms": 7057.5
+      },
+      {
+        "stage": "variant_CONTRADICTED",
+        "model": "deepseek/deepseek-v4.1-flash",
+        "status": "OK",
+        "calls": 16,
+        "prompt_tokens": 21519,
+        "completion_tokens": 34377,
+        "cost_usd": 0.012638,
+        "cached": 0,
+        "avg_latency_ms": 20266.8
+      },
+      {
+        "stage": "variant_SUPPORTED",
+        "model": "deepseek/deepseek-v4.1-flash",
+        "status": "OK",
+        "calls": 14,
+        "prompt_tokens": 17593,
+        "completion_tokens": 2351,
+        "cost_usd": 0.003121,
+        "cached": 0,
+        "avg_latency_ms": 3683.9
+      },
+      {
+        "stage": "variant_UNSUPPORTED",
+        "model": "deepseek/deepseek-v4.1-flash",
+        "status": "OK",
+        "calls": 16,
+        "prompt_tokens": 21100,
+        "completion_tokens": 50345,
+        "cost_usd": 0.017051,
+        "cached": 0,
+        "avg_latency_ms": 28998.8
+      }
+    ]
+  },
+  "cost": {
+    "estimated_usd": 0.1239,
+    "tokens": 574907,
+    "families": 14,
+    "usd_per_family": 0.0089
+  },
+  "topic_coverage": [
+    {
+      "topic_id": "T_016a289d",
+      "name": "Science",
+      "path": "Science",
+      "depth": 0,
+      "accepted": 1.0,
+      "candidates": 0,
+      "target": 6,
+      "score_gap": 5.0,
+      "last_sampled_at": null
+    },
+    {
+      "topic_id": "T_07067ca3",
+      "name": "Diagnostics",
+      "path": "Health > Diagnostics",
+      "depth": 1,
+      "accepted": 0.0,
+      "candidates": 0,
+      "target": 4,
+      "score_gap": 4.0,
+      "last_sampled_at": null
+    },
+    {
+      "topic_id": "T_0c037ecf",
+      "name": "Consumer Devices",
+      "path": "Technology > Consumer Devices",
+      "depth": 1,
+      "accepted": 2.0,
+      "candidates": 2,
+      "target": 4,
+      "score_gap": 2.0,
+      "last_sampled_at": "2026-11-24T17:34:33+00:00"
+    },
+    {
+      "topic_id": "T_137ba207",
+      "name": "Astronomy",
+      "path": "Science > Astronomy",
+      "depth": 1,
+      "accepted": 0.0,
+      "candidates": 0,
+      "target": 4,
+      "score_gap": 4.0,
+      "last_sampled_at": null
+    },
+    {
+      "topic_id": "T_18bd9735",
+      "name": "Film Production",
+      "path": "Culture > Film Production",
+      "depth": 1,
+      "accepted": 2.0,
+      "candidates": 2,
+      "target": 4,
+      "score_gap": 2.0,
+      "last_sampled_at": "2026-11-24T17:34:33+00:00"
+    },
+    {
+      "topic_id": "T_1b0dd7ee",
+      "name": "Technology",
+      "path": "Technology",
+      "depth": 0,
+      "accepted": 3.0,
+      "candidates": 4,
+      "target": 6,
+      "score_gap": 3.0,
+      "last_sampled_at": "2026-11-24T17:27:42+00:00"
+    },
+    {
+      "topic_id": "T_1b3a428e",
+      "name": "Business",
+      "path": "Business",
+      "depth": 0,
+      "accepted": 1.0,
+      "candidates": 0,
+      "target": 6,
+      "score_gap": 5.0,
+      "last_sampled_at": null
+    },
+    {
+      "topic_id": "T_247df1ca",
+      "name": "Data Protection",
+      "path": "Law and Policy > Data Protection",
+      "depth": 1,
+      "accepted": 0.0,
+      "candidates": 2,
+      "target": 4,
+      "score_gap": 4.0,
+      "last_sampled_at": "2026-11-24T17:34:33+00:00"
+    },
+    {
+      "topic_id": "T_4d7256ff",
+      "name": "Museums",
+      "path": "Culture > Museums",
+      "depth": 1,
+      "accepted": 0.0,
+      "candidates": 0,
+      "target": 4,
+      "score_gap": 4.0,
+      "last_sampled_at": null
+    },
+    {
+      "topic_id": "T_55abae55",
+      "name": "Wildlife Conservation",
+      "path": "Environment > Wildlife Conservation",
+      "depth": 1,
+      "accepted": 0.0,
+      "candidates": 0,
+      "target": 4,
+      "score_gap": 4.0,
+      "last_sampled_at": null
+    },
+    {
+      "topic_id": "T_568595dd",
+      "name": "Education",
+      "path": "Education",
+      "depth": 0,
+      "accepted": 0.0,
+      "candidates": 0,
+      "target": 6,
+      "score_gap": 6.0,
+      "last_sampled_at": null
+    },
+    {
+      "topic_id": "T_5dd18a2b",
+      "name": "Sport",
+      "path": "Sport",
+      "depth": 0,
+      "accepted": 0.0,
+      "candidates": 0,
+      "target": 6,
+      "score_gap": 6.0,
+      "last_sampled_at": null
+    },
+    {
+      "topic_id": "T_65bf739a",
+      "name": "Endurance Training",
+      "path": "Sport > Endurance Training",
+      "depth": 1,
+      "accepted": 0.0,
+      "candidates": 0,
+      "target": 4,
+      "score_gap": 4.0,
+      "last_sampled_at": null
+    },
+    {
+      "topic_id": "T_6ad730c1",
+      "name": "Logistics",
+      "path": "Business > Logistics",
+      "depth": 1,
+      "accepted": 0.0,
+      "candidates": 0,
+      "target": 4,
+      "score_gap": 4.0,
+      "last_sampled_at": null
+    },
+    {
+      "topic_id": "T_6bf27e6e",
+      "name": "Materials Science",
+      "path": "Science > Materials Science",
+      "depth": 1,
+      "accepted": 2.0,
+      "candidates": 2,
+      "target": 4,
+      "score_gap": 2.0,
+      "last_sampled_at": "2026-11-24T17:34:33+00:00"
+    },
+    {
+      "topic_id": "T_7318bc18",
+      "name": "Environment",
+      "path": "Environment",
+      "depth": 0,
+      "accepted": 1.0,
+      "candidates": 0,
+      "target": 6,
+      "score_gap": 5.0,
+      "last_sampled_at": null
+    },
+    {
+      "topic_id": "T_7ea835c4",
+      "name": "Health",
+      "path": "Health",
+      "depth": 0,
+      "accepted": 1.0,
+      "candidates": 0,
+      "target": 6,
+      "score_gap": 5.0,
+      "last_sampled_at": null
+    },
+    {
+      "topic_id": "T_80aad67a",
+      "name": "Urban Water Systems",
+      "path": "Environment > Urban Water Systems",
+      "depth": 1,
+      "accepted": 2.0,
+      "candidates": 2,
+      "target": 4,
+      "score_gap": 2.0,
+      "last_sampled_at": "2026-11-24T17:34:33+00:00"
+    },
+    {
+      "topic_id": "T_918be844",
+      "name": "History",
+      "path": "History",
+      "depth": 0,
+      "accepted": 0.0,
+      "candidates": 0,
+      "target": 6,
+      "score_gap": 6.0,
+      "last_sampled_at": null
+    },
+    {
+      "topic_id": "T_9c51a19a",
+      "name": "Culture",
+      "path": "Culture",
+      "depth": 0,
+      "accepted": 1.0,
+      "candidates": 0,
+      "target": 6,
+      "score_gap": 5.0,
+      "last_sampled_at": null
+    },
+    {
+      "topic_id": "T_a5c460af",
+      "name": "Nutrition",
+      "path": "Health > Nutrition",
+      "depth": 1,
+      "accepted": 2.0,
+      "candidates": 2,
+      "target": 4,
+      "score_gap": 2.0,
+      "last_sampled_at": "2026-11-24T17:34:33+00:00"
+    },
+    {
+      "topic_id": "T_a9d7d165",
+      "name": "Manufacturing",
+      "path": "Business > Manufacturing",
+      "depth": 1,
+      "accepted": 0.0,
+      "candidates": 0,
+      "target": 4,
+      "score_gap": 4.0,
+      "last_sampled_at": null
+    },
+    {
+      "topic_id": "T_b8533512",
+      "name": "Programming Languages",
+      "path": "Technology > Programming Languages",
+      "depth": 1,
+      "accepted": 0.0,
+      "candidates": 0,
+      "target": 4,
+      "score_gap": 4.0,
+      "last_sampled_at": null
+    },
+    {
+      "topic_id": "T_bed528e8",
+      "name": "Marine Biology",
+      "path": "Science > Marine Biology",
+      "depth": 1,
+      "accepted": 0.0,
+      "candidates": 0,
+      "target": 4,
+      "score_gap": 4.0,
+      "last_sampled_at": null
+    },
+    {
+      "topic_id": "T_cc88127b",
+      "name": "Databases",
+      "path": "Technology > Databases",
+      "depth": 1,
+      "accepted": 0.0,
+      "candidates": 0,
+      "target": 4,
+      "score_gap": 4.0,
+      "last_sampled_at": null
+    },
+    {
+      "topic_id": "T_e4c74ac2",
+      "name": "Networking",
+      "path": "Technology > Networking",
+      "depth": 1,
+      "accepted": 0.0,
+      "candidates": 0,
+      "target": 4,
+      "score_gap": 4.0,
+      "last_sampled_at": null
+    },
+    {
+      "topic_id": "T_f3260528",
+      "name": "Vocational Training",
+      "path": "Education > Vocational Training",
+      "depth": 1,
+      "accepted": 0.0,
+      "candidates": 0,
+      "target": 4,
+      "score_gap": 4.0,
+      "last_sampled_at": null
+    },
+    {
+      "topic_id": "T_f3ee7b2c",
+      "name": "Consumer Finance",
+      "path": "Business > Consumer Finance",
+      "depth": 1,
+      "accepted": 2.0,
+      "candidates": 2,
+      "target": 4,
+      "score_gap": 2.0,
+      "last_sampled_at": "2026-11-24T17:34:33+00:00"
+    },
+    {
+      "topic_id": "T_f62a71d7",
+      "name": "Maritime Trade",
+      "path": "History > Maritime Trade",
+      "depth": 1,
+      "accepted": 0.0,
+      "candidates": 0,
+      "target": 4,
+      "score_gap": 4.0,
+      "last_sampled_at": null
+    },
+    {
+      "topic_id": "T_fa10e71a",
+      "name": "Law and Policy",
+      "path": "Law and Policy",
+      "depth": 0,
+      "accepted": 0.0,
+      "candidates": 0,
+      "target": 6,
+      "score_gap": 6.0,
+      "last_sampled_at": null
+    }
+  ],
+  "shortcut_audit": {
+    "status": "ok",
+    "variants": 42,
+    "families": 14,
+    "train_variants": 27,
+    "test_variants": 15,
+    "chance_accuracy": 0.3333,
+    "overall": {
+      "accuracy": 0.3333,
+      "macro_f1": 0.316,
+      "per_class": {
+        "SUPPORTED": {
+          "precision": 0.5,
+          "recall": 0.2,
+          "f1": 0.286
+        },
+        "CONTRADICTED": {
+          "precision": 0.2,
+          "recall": 0.2,
+          "f1": 0.2
+        },
+        "UNSUPPORTED": {
+          "precision": 0.375,
+          "recall": 0.6,
+          "f1": 0.462
+        }
+      },
+      "ci95_accuracy": [
+        0.1333,
+        0.6
+      ]
+    },
+    "by_feature_group": {
+      "length_only": {
+        "accuracy": 0.3333,
+        "macro_f1": 0.2753,
+        "per_class": {
+          "SUPPORTED": {
+            "precision": 0.375,
+            "recall": 0.6,
+            "f1": 0.462
+          },
+          "CONTRADICTED": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          },
+          "UNSUPPORTED": {
+            "precision": 0.333,
+            "recall": 0.4,
+            "f1": 0.364
+          }
+        }
+      },
+      "punctuation_only": {
+        "accuracy": 0.4667,
+        "macro_f1": 0.3563,
+        "per_class": {
+          "SUPPORTED": {
+            "precision": 0.5,
+            "recall": 0.4,
+            "f1": 0.444
+          },
+          "CONTRADICTED": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          },
+          "UNSUPPORTED": {
+            "precision": 0.455,
+            "recall": 1.0,
+            "f1": 0.625
+          }
+        }
+      },
+      "casing_digits_only": {
+        "accuracy": 0.4,
+        "macro_f1": 0.3887,
+        "per_class": {
+          "SUPPORTED": {
+            "precision": 0.5,
+            "recall": 0.4,
+            "f1": 0.444
+          },
+          "CONTRADICTED": {
+            "precision": 0.25,
+            "recall": 0.2,
+            "f1": 0.222
+          },
+          "UNSUPPORTED": {
+            "precision": 0.429,
+            "recall": 0.6,
+            "f1": 0.5
+          }
+        }
+      },
+      "all": {
+        "accuracy": 0.3333,
+        "macro_f1": 0.316,
+        "per_class": {
+          "SUPPORTED": {
+            "precision": 0.5,
+            "recall": 0.2,
+            "f1": 0.286
+          },
+          "CONTRADICTED": {
+            "precision": 0.2,
+            "recall": 0.2,
+            "f1": 0.2
+          },
+          "UNSUPPORTED": {
+            "precision": 0.375,
+            "recall": 0.6,
+            "f1": 0.462
+          }
+        }
+      }
+    },
+    "flagged": false,
+    "threshold": 0.72,
+    "top_features": [
+      {
+        "feature": "digit_ratio",
+        "weight": 3.1488
+      },
+      {
+        "feature": "tokens_p100",
+        "weight": 1.5019
+      },
+      {
+        "feature": "apostrophes_per_sentence",
+        "weight": 1.4115
+      },
+      {
+        "feature": "log_tokens",
+        "weight": 1.3769
+      },
+      {
+        "feature": "commas_per_sentence",
+        "weight": 1.3462
+      },
+      {
+        "feature": "tokens_per_sentence_p10",
+        "weight": 1.2996
+      }
+    ],
+    "note": "Surface-form features only (length, punctuation, casing, digits); recipe metadata and edit counts are excluded because they are unavailable at inference. Split is by family. High accuracy means labels are recoverable from the text's form and the generator should be rebalanced."
+  }
+}

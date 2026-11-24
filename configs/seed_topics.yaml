@@ -1,0 +1,83 @@
+# Seed topic graph for English passage generation.
+# Topics are starting points; the planner expands them under depth/breadth bounds.
+topics:
+  - name: Technology
+    description: Computing systems, software, hardware and their design.
+    importance: 1.0
+    children:
+      - name: Programming Languages
+        description: Language design, runtimes, tooling and ecosystems.
+      - name: Databases
+        description: Storage engines, query processing and data modelling.
+      - name: Networking
+        description: Protocols, routing, distributed communication.
+      - name: Consumer Devices
+        description: Hardware products, interfaces and usability.
+  - name: Science
+    description: Empirical research, methods and findings.
+    importance: 1.0
+    children:
+      - name: Materials Science
+        description: Novel materials, properties and fabrication.
+      - name: Marine Biology
+        description: Ocean organisms, ecosystems and surveys.
+      - name: Astronomy
+        description: Observation, instruments and celestial objects.
+  - name: Business
+    description: Firms, markets, operations and strategy.
+    importance: 0.9
+    children:
+      - name: Logistics
+        description: Supply chains, warehousing and transport.
+      - name: Consumer Finance
+        description: Household credit, savings and pricing.
+      - name: Manufacturing
+        description: Production lines, quality and automation.
+  - name: Health
+    description: Medicine, public health and care delivery.
+    importance: 0.9
+    children:
+      - name: Nutrition
+        description: Diet, nutrients and metabolic outcomes.
+      - name: Diagnostics
+        description: Testing, imaging and clinical decision support.
+  - name: Environment
+    description: Ecosystems, climate and resource management.
+    importance: 0.85
+    children:
+      - name: Urban Water Systems
+        description: Supply, treatment and drainage infrastructure.
+      - name: Wildlife Conservation
+        description: Species protection, habitats and monitoring.
+  - name: Culture
+    description: Arts, media, heritage and everyday practice.
+    importance: 0.7
+    children:
+      - name: Museums
+        description: Collections, exhibitions and conservation.
+      - name: Film Production
+        description: Production roles, scheduling and distribution.
+  - name: Law and Policy
+    description: Regulation, governance and public administration.
+    importance: 0.7
+    children:
+      - name: Data Protection
+        description: Privacy rules, consent and compliance practice.
+  - name: Education
+    description: Teaching, assessment and learning systems.
+    importance: 0.7
+    children:
+      - name: Vocational Training
+        description: Skills programmes, apprenticeships and certification.
+  - name: Sport
+    description: Competition, training and sports science.
+    importance: 0.6
+    children:
+      - name: Endurance Training
+        description: Periodisation, load management and recovery.
+  - name: History
+    description: Past societies, events and material culture.
+    importance: 0.6
+    children:
+      - name: Maritime Trade
+        description: Ports, shipping routes and commodity exchange.

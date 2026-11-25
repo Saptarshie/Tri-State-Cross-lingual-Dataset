@@ -505,8 +505,10 @@ silently exported.
 - A thread lock serialises index mutation, split assignment and family registration; SQLite
   writes are serialised through a connection lock.
 - `manifest.json` is refreshed after every candidate for operational visibility.
-- `run` processes candidates in batches of `2 × max_concurrency`; the acceptance count can
-  overshoot the requested limit by at most one batch (documented and observable in the summary).
+- `run` keeps `max_concurrency` candidates in flight with a `FIRST_COMPLETED` scheduler and stops
+  submitting at the acceptance/cost limit. It is not a barrier batch; slow families do not idle
+  the other workers. The acceptance count can overshoot the requested limit by at most the
+  in-flight set (documented and observable in the summary).
 - `stop-after` runs a prefix of the pipeline and leaves the candidate `PENDING`, which
   `resume`/`run` continues from the cached artefacts.
 
@@ -622,6 +624,27 @@ caveat).
 
 ---
 
+## 15.5 Translation branch (separate product)
+
+The Bengali/Banglish branch is implemented in `src/tristate/multilingual/` and
+documented in `docs/translation.md`. It consumes only accepted, immutable
+English families and emits a profile-scoped `FamilyTranslation`; it cannot edit
+the source. It uses DeepSeek only (no generation-provider fallback), keeps one
+shared target claim set across the three labels, translates sentence windows
+with independent review, and quarantines relation drift rather than relabelling.
+A failed window goes to a bounded ReAct quality fixer with sentence-level edit
+tools (`read_*`, `apply_sentence_edits`, `run_review`, `rollback`, `finish`,
+`abort`); the fixer cannot change the source, labels or claim set and cannot
+certify itself.
+
+The translation branch can use the same `LLM_API_KEY` as the English factory
+(the default) or an isolated key. Mock tests cover alignment, paragraph preservation, script gates,
+relation drift, storage and the fixer action/edit flow. A real one-family pilot
+has run but has not yet been accepted; the four profiles are separate products
+and must not be pooled without a profile key.
+
+---
+
 ## 16. Milestone alignment
 
 | Milestone                                                              | State                                                                                                        |
@@ -632,7 +655,7 @@ caveat).
 | 3 patch editing, bounded repair, graph diff, disagreement queue        | done, except human-review export/UI                                                                          |
 | 4 corpus expansion, news ingestion, style sampling, coverage scheduler | partial: topic expansion, style sampling, coverage selection and local ingestion done; network ingestion not |
 | 5 scale-out (async queues, dashboards, snapshots, locked test set)     | partial: durable jobs, concurrency, budget, exports, splits done; dashboards/async workers not               |
-| 6 multilingual                                                         | not started (schema fields present: language/script/locale)                                                  |
+| 6 multilingual                                                         | verifier split hard/advisory; ReAct fixer default (round-2 8/10 vs deterministic 6/10); family-relation failures next |
 
 ---
 

@@ -59,6 +59,17 @@ def test_prompts_load_and_render():
         lib.render("topics_expand", topic_name="x")
 
 
+def test_prompt_values_can_contain_json_braces(tmp_path):
+    src = tmp_path / "prompts"
+    src.mkdir()
+    (src / "p.md").write_text(
+        "---\nversion: '1'\nstage: test\n---\nvalue={{value}}\n", encoding="utf-8"
+    )
+    lib = PromptLibrary(src)
+    rendered, _ = lib.render("p", value='{"nested":{"ok":true}}')
+    assert rendered.strip() == 'value={"nested":{"ok":true}}'
+
+
 def test_prompt_versions_change_with_content(tmp_path):
     src = load_config().prompts_dir
     lib = PromptLibrary(src)

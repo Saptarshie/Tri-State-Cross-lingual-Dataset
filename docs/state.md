@@ -2,7 +2,7 @@
 
 Snapshot of what exists, what was measured, and what is next. Update after every substantive run.
 
-Last updated: 2026-11-25 05:20 IST (narrative axis added; 200-family batch running in `data-v5`).
+Last updated: 2026-11-25 17:05 IST (round-2 ReAct 8/10; one remaining quarantine is a family-review false positive, fixed in prompt; FAM_000008 is real drift).
 
 ---
 
@@ -21,7 +21,7 @@ Milestones 0–3 of the objective are implemented and exercised against the live
 | graph diff | implemented, advisory (`require_graph_diff: false`) |
 | novelty memory (4 HNSW namespaces) | complete, Ollama `embeddinggemma` 768-d |
 | splits, export, reports, shortcut audit | complete |
-| multilingual (Bengali/Banglish) | not started |
+| multilingual (Bengali/Banglish) | verifier split hard/soft; round-2 ablation: ReAct 8/10, deterministic 6/10; family-relation failures remain |
 
 Artifacts are durable per stage; `run`/`resume` continue after a crash or `Ctrl-C`. Accepted
 families are immutable; quarantined candidates keep their workdir and reasons.
@@ -37,7 +37,8 @@ families are immutable; quarantined candidates keep their workdir and reasons.
 - Models: **all stages `deepseek/deepseek-v4.1-flash`** (operator changed every stage; this removes
   the cross-family separation the validator design preferred — see limitations).
 - Embeddings: local Ollama `embeddinggemma` (768-d), cached under `data/embeddings/`.
-- Tests: `133 passed` (offline); `ruff check --select F,E9` clean.
+- Tests: `145 passed` (offline); `ruff check --select F,E9` clean. The 10 translation
+  tests are mock-only; live translation calls have been made separately.
 - Base-document length: configurable (`passage.target_tokens_*`), default 2,000–4,000; the
   pilot-02 export predates this and is the short-passage regime.
 - Style: tone (7 registers) and narrative (6 modes: `expository`, `storytelling`,
@@ -47,12 +48,58 @@ families are immutable; quarantined candidates keep their workdir and reasons.
 Note: every command must run with `env -u PYTHONPATH` on this host (foreign `PYTHONPATH` shadows
 the project's packages).
 
-**Scale run in progress.** `data-v5` is targeting **200 base documents / 600 variants** with
-`concurrency: 10`, budget `$25`, driven by `scripts/generate_dataset.py`. Progress and per-round
-counts are in `data-v5/batch_manifest.json`; `scripts/finalize_when_done.py` indexes and exports
-`v1-200` when the batch reports `complete`. The first accepted families confirm the narrative
-axis is exercising (`persuasive`, `humorous`, `first_person` observed), not collapsing to
-`expository`.
+**English v1-100 is complete.** The batch was stopped at the operator's request
+when the 100th family was accepted (`FAM_000100`, 2026-11-25 06:09Z). Final
+inventory: **100 families / 300 variants / 344 claims**; splits **train 79,
+test 12, validation 9**; total provider usage **3,820 calls / $7.0804**. The
+finalizer rebuilt the index (100 families indexed) and exported
+`data-v5/exports/v1-100/`; `data-v5/finalize.json` records `status: finalized`.
+
+The batch manifest now says `target_families: 100`, `status: complete`; the
+remaining 126 pending / 44 quarantined candidates were not run. To resume toward
+200, relaunch `scripts/generate_dataset.py` with the original target and budget;
+accepted families are skipped.
+
+The translation branch uses the same `LLM_API_KEY`/provider as the English
+factory by default and supports two concurrency levels: `--concurrency` for
+families and `window.concurrency` (default 4) for independent windows.
+
+Translation pilot history (all `bn_in_native`, source `FAM_000001`):
+
+- `translate-pilot-5`: whole-window repair; quarantined after the repair budget
+  oscillated between gloss, tense and alignment findings.
+- `translate-pilot-6`: sentence-targeted surgical repair; quarantined at `W007`
+  on numeric/alignment findings.
+- `translate-pilot-7`: bounded ReAct fixer with sentence-level edit tools;
+  **27 calls / 36 fixer actions**, still quarantined with
+  `SUPPORTED W007: fixer failed: step budget exhausted (8)`. Root cause found:
+  the fixer prompt did not include `trace_json`, so every step was identical
+  and served from the content-addressed cache after the first action.
+- `translate-pilot-8`: trace is now in the fixer prompt, edit budgets are
+  explicit, and read-tool observations are recorded. The run failed before any
+  fixer action with `prompt multilingual_fixer has unresolved placeholders`:
+  the prompt renderer rejected any `}}`, including valid nested JSON returned
+  as a variable. Fixed the renderer to detect only residual `{{name}}`
+  placeholders; pilot-9 will exercise this path.
+
+Cumulative `data-v5/multilingual/logs/calls.jsonl`: 506 calls before pilot-9.
+**No accepted translation exists yet.** The latest reason is in
+`data-v5/multilingual/bn_in_native/quarantine/FAM_000001.json`. Next is
+verifying whether the trace/render fixes let the fixer converge, not scaling.
+See `docs/translation.md`.
+
+### Round-2 verifier/repair changes
+
+After the first 10-family ablation, the window reviewer was split into blocking
+and advisory findings. Sentence-boundary differences, first-mention glosses,
+register/tone and conventional Latin technical terms are advisory unless they
+change meaning, coverage, numbers, modality or script. Fixer budgets are now
+30 steps / 30 edits per step / 30 total edits; `window.max_repairs` is 30.
+Numeric tokenization was also fixed to detect `1,400টি`/`১,৪০০` correctly (the
+old word-boundary regex falsely reported missing numbers before Bengali
+suffixes). Round-2 arms ran under `data-v5/ablation2/`: **ReAct 8/10 accepted,
+deterministic 6/10**; both arms failed `FAM_000006`/`FAM_000008` on family
+relation review. Full report: `docs/reports/ablation-fixer-round2-2026-11-25.md`.
 
 ---
 

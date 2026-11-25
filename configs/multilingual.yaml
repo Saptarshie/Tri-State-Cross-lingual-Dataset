@@ -1,0 +1,111 @@
+# Translation branch configuration.
+# The DeepSeek key is read from the environment and is never written here.
+source_dir: data-v5
+output_dir: data-v5/multilingual
+prompts_dir: prompts
+max_profiles: 4
+require_independent_review: true
+
+deepseek:
+  # Same OpenAI-compatible credential as the English pipeline by default.
+  # Set a different api_key_env/base_url only for a separately provisioned key.
+  base_url: https://api.commandcode.ai/provider/v1
+  api_key_env: LLM_API_KEY
+  model: deepseek/deepseek-v4.1-flash
+  review_model: deepseek/deepseek-v4.1-flash
+  temperature: 0.2
+  review_temperature: 0.0
+  max_tokens: 64000
+  cost_in_per_mtok: 0.0
+  cost_out_per_mtok: 0.0
+  thinking_mode: false
+  review_thinking_mode: true
+  # Exact provider parameter names/values are deployment-specific. Inspect the
+  # current DeepSeek API docs before filling these; an empty map sends nothing.
+  extra_body_generate: {}
+  extra_body_review: {}
+  request_timeout_s: 300
+  max_retries: 3
+
+fixer:
+  enabled: true
+  max_steps: 30
+  max_edits_per_step: 30
+  max_total_edits: 30
+
+window:
+  target_words_min: 250
+  target_words_max: 500
+  context_sentences: 2
+  max_repairs: 30
+  # windows within one variant are independent; keep this modest to respect
+  # provider rate limits when family-level --concurrency is also high.
+  concurrency: 4
+
+# Profiles are listed explicitly so a config change cannot silently alter an
+# already-translated family.  Use `tristate translate profiles` to inspect.
+profiles:
+  - profile_id: bn_in_native
+    base_language: Bengali
+    locale: bn-IN
+    display_name: West Bengal Bengali, native script
+    script_policy: native
+    primary_script: Bengali
+    sentence_syntax: natural Bengali SOV; split long English sentences when Bengali clause order would become unreadable
+    code_switching: false
+    code_switching_intensity: none
+    register_style: educated standard Bengali; spoken rhythm without slang
+    regional_style: West Bengal / Kolkata standard
+    romanization_policy: not applicable
+    number_policy: preserve source numerals
+    proper_noun_policy: transliterate proper nouns consistently and give the English form on first mention
+    english_term_policy: use the conventional Bengali term; keep the English term in parentheses on first mention when it is technical
+    version: 1.0.0
+  - profile_id: bn_bd_native
+    base_language: Bengali
+    locale: bn-BD
+    display_name: Bangladesh Bengali, native script
+    script_policy: native
+    primary_script: Bengali
+    sentence_syntax: natural Bangladeshi Bengali SOV; prefer shorter clauses than the English source
+    code_switching: false
+    code_switching_intensity: none
+    register_style: educated standard Bengali; Bangladeshi spelling and vocabulary
+    regional_style: Dhaka standard
+    romanization_policy: not applicable
+    number_policy: preserve source numerals
+    proper_noun_policy: transliterate proper nouns consistently and give the English form on first mention
+    english_term_policy: use the conventional Bangladeshi Bengali term; keep the English term in parentheses on first mention when technical
+    version: 1.0.0
+  - profile_id: bn_romanized
+    base_language: Bengali
+    locale: bn-IN-rom
+    display_name: Romanized Bengali
+    script_policy: romanized
+    primary_script: Latin
+    sentence_syntax: Bengali syntax and idiom written in Latin script; avoid English word order
+    code_switching: false
+    code_switching_intensity: none
+    register_style: informal online register; consistent romanization
+    regional_style: West Bengal online romanization
+    romanization_policy: one consistent scheme throughout; no native-script mixing; common English loanwords may stay English
+    number_policy: preserve source numerals
+    proper_noun_policy: keep established Latin spelling for names; never alternate spellings
+    english_term_policy: ordinary English words become romanized Bengali; established technical terms may stay English
+    version: 1.0.0
+  - profile_id: banglish_code_mixed
+    base_language: Bengali
+    locale: bn-IN-mixed
+    display_name: Banglish / code-mixed Bengali
+    script_policy: mixed
+    primary_script: Mixed
+    sentence_syntax: Bengali matrix syntax with natural English technical insertions; switch at phrase boundaries, not random word substitution
+    code_switching: true
+    code_switching_intensity: moderate
+    register_style: urban conversational; competent bilingual speaker
+    regional_style: Kolkata urban code-mixing
+    romanization_policy: Bengali content in Latin script; English technical terms in English
+    number_policy: preserve source numerals
+    proper_noun_policy: transliterate proper nouns consistently and give the English form on first mention
+    english_term_policy: keep established English technical terms in English; translate ordinary vocabulary into Bengali
+    version: 1.0.0

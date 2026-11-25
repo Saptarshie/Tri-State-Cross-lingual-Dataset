@@ -44,8 +44,11 @@ class Prompt:
                 f"prompt {self.name} missing variables: {sorted(missing)}"
             )
         rendered = _PLACEHOLDER.sub(lambda m: str(variables[m.group(1)]), self.body)
-        if "{{" in rendered or "}}" in rendered:
-            raise PromptError(f"prompt {self.name} has unresolved placeholders")
+        unresolved = _PLACEHOLDER.search(rendered)
+        if unresolved:
+            raise PromptError(
+                f"prompt {self.name} has unresolved placeholder: {unresolved.group(0)}"
+            )
         return rendered
 
 

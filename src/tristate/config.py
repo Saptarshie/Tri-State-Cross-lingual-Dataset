@@ -277,6 +277,7 @@ class ModelCfg(BaseModel):
     max_tokens: int = 1200
     cost_in_per_mtok: float = 0.0
     cost_out_per_mtok: float = 0.0
+    extra_body: dict[str, Any] = Field(default_factory=dict)
 
 
 class LlmCfg(BaseModel):

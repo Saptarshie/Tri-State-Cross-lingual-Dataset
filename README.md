@@ -128,6 +128,9 @@ data/
 - `docs/state.md` — what is implemented, verified numbers, known issues, next steps.
 - `docs/devlog.md` — chronological build log, bugs found and fixed.
 - `docs/runbook.md` — operations, failure recovery, environment pitfalls.
+- `docs/translation.md` — Bengali/Banglish branch: profiles, stages, quarantine, commands.
+- `docs/ablation.md` and `docs/reports/ablation-fixer-2026-11-25.md` — 10-family ReAct-vs-deterministic repair study (round 1).
+- `docs/reports/ablation-fixer-round2-2026-11-25.md` — round 2 with the loosened verifier and 30-edit budgets.
 - `docs/chat_log.md` — original research discussion (context, not a spec).
 
 ## Non-negotiables encoded in code

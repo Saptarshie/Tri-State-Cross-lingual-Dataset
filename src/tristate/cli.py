@@ -21,6 +21,7 @@ from .pipeline import Pipeline
 from .prompts import PromptLibrary
 from .reports import render_markdown, write_reports
 from .store import Store
+from .multilingual.cli import cmd_translate
 from .topics import (
     coverage_report,
     expand_topic,
@@ -362,6 +363,19 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("action", nargs="?", default="list", choices=["list"])
     q.add_argument("--limit", type=int, default=20)
     q.set_defaults(func=cmd_quarantine)
+
+    tr = sub.add_parser("translate", help="DeepSeek multilingual translation branch")
+    tr.add_argument("action", choices=["profiles", "preflight", "run", "status", "show", "export"])
+    tr.add_argument("--profile", default="bn_in_native", help="target profile id")
+    tr.add_argument("--translation-config", default=None, help="multilingual YAML (default: configs/multilingual.yaml)")
+    tr.add_argument("--output-dir", default=None, help="override translation output dir")
+    tr.add_argument("--limit", type=int, default=None, help="maximum source families for this run")
+    tr.add_argument("--concurrency", type=int, default=4)
+    tr.add_argument("--retry-quarantined", action="store_true")
+    tr.add_argument("--run-id", default="translate")
+    tr.add_argument("--family-id", default=None)
+    tr.add_argument("--version", default="v1")
+    tr.set_defaults(func=cmd_translate)
 
     f = sub.add_parser("families", help="accepted family inspection")
     f.add_argument("action", choices=["list", "show"])

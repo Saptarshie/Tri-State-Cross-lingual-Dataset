@@ -296,6 +296,8 @@ class LlmClient:
         }
         if self.cfg.llm.json_mode:
             payload["response_format"] = {"type": "json_object"}
+        if model_cfg.extra_body:
+            payload.update(model_cfg.extra_body)
 
         self._budget_guard()
 

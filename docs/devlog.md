@@ -185,10 +185,45 @@ worth remembering. Times are local (IST).
   enough distinct leaves instead of reusing ~20 topics.
 - **Batch driver.** `scripts/generate_dataset.py` seeds/expands, runs until an accepted-family
   target, and checkpoints `batch_manifest.json` per round; safe to resume after a crash.
+- **Continuous scheduler.** The first 200-family run exposed a utilisation bug: `run()` submitted
+  candidates in fixed batches of `2 × concurrency` and waited for every task in the batch before
+  starting the next one. Slow families left half the workers idle at each barrier. Measured:
+  1,334 minutes of provider call time produced only 50 families in 300 minutes wall-clock, i.e.
+  ~4.4 calls in flight despite `max_concurrency: 10`. Replaced the barrier with a
+  `FIRST_COMPLETED` scheduler that keeps `concurrency` tasks in flight until the acceptance or
+  cost limit is reached; tests remain green.
 - Prompt versions: blueprint 3.0.0, passage 3.0.0, section 2.0.0, edit_plan 3.2.0,
   topics_expand 2.0.0. Tests **133** (3 style tests added).
 - Real pilot in `data-v4`: 2/2 accepted, 51 calls, $0.0948, 2,695 and 2,113 tokens; styles
   `neutral_explanatory/persuasive` and `instructional/expository`.
+
+---
+
+## 2026-11-25 — stop at 100 and start the translation branch
+
+- The English batch was stopped at **100 accepted families** on operator request. `data-v5`
+  contains 100 families / 300 variants / 344 claims; splits train 79, test 12, validation 9;
+  3,820 calls / $7.0804. Index rebuilt and `v1-100` exported; `finalize.json` is `finalized`.
+- Added the translation branch (same `LLM_API_KEY` by default, DeepSeek model):
+  `src/tristate/multilingual/{models,config,ledger,client,pipeline,cli}.py`.
+- Four explicit profiles: `bn_in_native`, `bn_bd_native`, `bn_romanized`,
+  `banglish_code_mixed`; profiles are versioned and stored with every output.
+- Translation stages: immutable source preflight/checksum → deterministic claim cards →
+  family glossary → shared target claims → claim review → sentence windows → window review →
+  bounded repair → assembled variant → family claim-relation review → accept/quarantine.
+- Paragraph ids are preserved across windows and restored on assembly; windows cover every
+  source sentence exactly once.
+- Script gates reject native/romanized policy violations; relation drift is quarantined, never
+  relabelled.
+- Added `tristate translate {profiles,preflight,run,status,show,export}` and
+  `docs/translation.md`; tests now **143**, mock-only for translation.
+- The branch now uses the shared `LLM_API_KEY` by default (same provider, DeepSeek model) and
+  preflight reports `ready: true` with 100/100 source families.
+- First `bn_in_native` pilot: 37 calls, all calls returned; `FAM_000001` was quarantined after
+  the window repair budget. Final reason was style-only proper-noun/English-term parenthetical
+  findings after an earlier tense/modality repair; no translation was accepted.
+- Added family-level `--concurrency` and window-level `window.concurrency` (default 4); windows
+  are independent and assembled in source order.
 
 ---
 
@@ -201,3 +236,93 @@ worth remembering. Times are local (IST).
 - Full-corpus regeneration when prompts change downstream (stage invalidation is local today).
 - Larger pilot with human-audited per-class precision before scaling; at N=15 every family landed
   in `train`, so no held-out number can be reported yet.
+
+
+---
+
+## 2026-11-25 - surgical repair and bounded ReAct quality fixer
+
+- **Repair became truly surgical.** The reviewer already named sentence ids, but the repair
+  path sent the whole window back to the translator; fixing one sentence repeatedly regressed
+  another. Repairs now resend only the affected sentence ids, merge them into the prior target,
+  and preserve every other sentence verbatim. Added a regression test asserting the first
+  request covers `S1,S2` and the repair request covers only `S1`.
+- **ReAct fixer.** Added `src/tristate/multilingual/fixer.py` and
+  `prompts/multilingual_fixer.md`: a bounded action loop over `read_*`,
+  `apply_sentence_edits`, `run_review`, `rollback`, `finish` and `abort`. Edits are
+  existing-sentence-id-only, reject empty/unknown/duplicate ids, enforce per-step and total
+  edit budgets, and require an independent `PASS`. Config: `fixer.enabled`, `max_steps: 8`,
+  `max_edits_per_step: 2`, `max_total_edits: 6`.
+- **Pilot-7 result.** Real `bn_in_native` run with the fixer: 27 calls / 36 fixer actions,
+  still 0 accepted; `FAM_000001` quarantined at `W007` because the fixer chose a broad
+  S81-S86 realignment and exhausted its 8-step budget. Diagnosis: the fixer prompt omitted
+  `trace_json`, so every step was identical and the cache returned the same action; edit
+  budgets were also not stated in the prompt. Fixed by adding the recent-action trace, explicit
+  per-step/total edit limits and read-tool observations. `translate-pilot-8` reruns this path.
+- **Pilot-8 result.** The trace fix reached the fixer prompt, but the renderer rejected
+  valid nested JSON because it treated any `}}` as an unresolved placeholder. Changed
+  `Prompt.render` to detect only residual `{{name}}` tokens; added a regression test.
+## 2026-11-25 - 10-family repair ablation
+
+- **Design.** Same first 10 accepted families, `bn_in_native`, same model,
+  reviewer and prompts. Arm A used the bounded ReAct fixer; Arm B used
+  deterministic surgical repair (`fixer.enabled: false`).
+- **Result.** Deterministic: **2/10 accepted** (FAM_000003, FAM_000004), 724
+  manifest calls. ReAct: **1/10 accepted** (FAM_000003), 807 calls and 247 fixer
+  actions. The fixer correctly diagnosed several defects but exhausted its
+  six-sentence edit budget on broad alignment shifts.
+- **Confounds.** One family per arm hit a provider 429; claim-translation
+  failures in FAM_000002/FAM_000009 occurred before window repair and do not
+  distinguish the arms. n=10 is not statistically meaningful.
+- **Decision.** Deterministic surgical repair remains the default. Add a
+  repair-scope pre-check and deterministic fallback before re-testing the ReAct
+  fixer at 30–50 families.
+- Full report: `docs/reports/ablation-fixer-2026-11-25.md`.
+- Tests **145 passed** after the prompt-render and quarantine-stub fixes;
+  `ruff --select F,E9` clean.
+
+## 2026-11-25 - verifier loosened for round 2
+
+- Split window review into **blocking** and **advisory** findings. Blocking:
+  entity/number/date/unit/quantifier, negation/modality/polarity/scope,
+  causal/logical relation, absent↔present claim, untranslated/empty content,
+  added facts, script policy. Advisory: first-mention gloss, register/tone,
+  punctuation, conventional Latin technical terms, minor word order, and
+  sentence-boundary differences that preserve all source content.
+- Advisory findings may be reported in `style_errors` while the verdict remains
+  `PASS`; they no longer quarantine a family.
+- Repair budgets increased to **30 steps / 30 edits per step / 30 total edits**
+  and `window.max_repairs: 30` for the round-2 ablation.
+- Round 2 runs both arms on the same 10 family sample; results pending.
+- Tests **145 passed**; `ruff --select F,E9` clean.
+
+## 2026-11-25 - round-2 ablation result
+
+- **ReAct fixer: 8/10 accepted; deterministic: 6/10 accepted.** The verifier
+  hard/advisory split removed style-only vetoes, and 30-step/30-edit budgets
+  let the fixer resolve repairs that previously exhausted six edits.
+- ReAct used 995 manifest calls / 100 fixer actions; deterministic used 869
+  calls. Accepted families per 100 calls: 0.804 vs 0.690.
+- Remaining quarantines are family-relation failures (`FAM_000006`,
+  `FAM_000008`) in both arms, not window-repair failures.
+- Numeric tokenizer fix (`1,400টি` / `১,৪০০`) removed a false claim-layer
+  quarantine.
+- Default changed to `fixer.enabled: true`; full report:
+  `docs/reports/ablation-fixer-round2-2026-11-25.md`.
+- Tests **145 passed**; `ruff --select F,E9` clean.
+
+## 2026-11-25 - FAM_000006 family-review false positive
+
+- Round-2 ReAct arm's two quarantines were `FAM_000006` and `FAM_000008`.
+- `FAM_000006`: the family reviewer's own findings said C1-C4 were all
+  `NEUTRAL` (exactly the expected UNSUPPORTED relation), but it returned `REPAIR`
+  because the shared target claim ledger contained translated claim statements.
+  That is a verifier self-contradiction, not a translation failure.
+- `FAM_000008`: C4 was genuinely `ENTAILED` by `S109`/`S122` while the expected
+  relation was `UNSUPPORTED`; this is a real relation drift and remains
+  quarantined.
+- Fixed the family-review prompt: the target claim ledger is not evidence that a
+  variant asserts the claims; for expected UNSUPPORTED, NEUTRAL is PASS; PASS
+  when every observed relation maps to expected, even if the ledger is richer.
+- No rerun yet; the next batch verifies the prompt change.
+- Tests **145 passed**; `ruff --select F,E9` clean.

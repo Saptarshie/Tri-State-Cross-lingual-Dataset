@@ -229,12 +229,43 @@ for a clean regeneration, remove the candidate workdir or use a new data directo
 
 ---
 
+## 7.1 Translation branch
+
+Translation is a separate product with its own config and output tree. It reads
+only `data-v5/families/FAM_*.json` whose quality is `ACCEPTED`.
+
+```bash
+env -u PYTHONPATH .venv/Scripts/python.exe -m tristate translate preflight
+env -u PYTHONPATH .venv/Scripts/python.exe -m tristate translate run \
+  --profile bn_in_native --limit 1 --concurrency 1 --run-id translate-pilot
+env -u PYTHONPATH .venv/Scripts/python.exe -m tristate translate status
+env -u PYTHONPATH .venv/Scripts/python.exe -m tristate translate export \
+  --profile bn_in_native --version v1-100
+```
+
+By default the branch uses the same `LLM_API_KEY` as English generation; a
+separate `base_url`/`api_key_env` can be configured. There is no silent
+fallback. The four profiles (`bn_in_native`, `bn_bd_native`, `bn_romanized`,
+`banglish_code_mixed`) are independent products. See `docs/translation.md` for
+the stage contract and quarantine rules.
+
+`configs/multilingual.yaml` enables the ReAct fixer by default after the
+round-2 ablation: ReAct accepted 8/10 vs deterministic 6/10 on the same sample.
+The configuration uses `fixer.max_steps: 30`, `fixer.max_edits_per_step: 30`
+and `fixer.max_total_edits: 30`; `window.max_repairs` is also 30. Set
+`fixer.enabled: false` to use the deterministic sentence-targeted repair path.
+Either path requires an independent `PASS` before acceptance.
+
+---
+
 ## 8. Tests
 
 ```bash
 env -u PYTHONPATH .venv/Scripts/python.exe -m pytest -q
 ```
 
-130 tests, no network, ~15 seconds. The mock pipeline tests exercise the full stage graph,
+145 tests, no network, ~15 seconds. The mock pipeline tests exercise the full stage graph,
 resume, idempotency, index-update ordering, splits, quarantine, export and reports; the long-form
-tests cover window splitting, section assembly offsets, document screening and claim spreading.
+tests cover window splitting, section assembly offsets, document screening and claim spreading; the
+translation tests cover preflight, claim cards, window/paragraph coverage, script gates, a mock
+end-to-end family and relation-drift quarantine.

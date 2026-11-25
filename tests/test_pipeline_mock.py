@@ -139,7 +139,10 @@ def test_long_form_pipeline_writes_sectioned_document(cfg_long):
         summary = p.run(limit=1, seed_topic="Technology", stop_after="passage")
         assert summary.accepted == 0
         rows = p.store.list_candidates()
-        cid = rows[0]["candidate_id"]
+        cid = next(
+            r["candidate_id"] for r in rows
+            if p.store.load_artifact(r["candidate_id"], "document_plan")
+        )
         plan_raw = p.store.load_artifact(cid, "document_plan")
         doc = p.store.load_artifact(cid, "passage")
         assert plan_raw and doc

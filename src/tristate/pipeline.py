@@ -12,7 +12,7 @@ import math
 import threading
 import time
 import traceback
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
@@ -29,7 +29,7 @@ from .ids import (
     passage_id_from_seq,
     variant_id,
 )
-from .llm import BudgetExceeded, LlmClient, PermanentLlmError
+from .llm import BudgetExceeded, LlmClient, PermanentLlmError, TransientLlmError
 from .longform import generate_document, plan_document
 from .mock import MockClient
 from .novelty import NoveltyService
@@ -596,6 +596,12 @@ class Pipeline:
             self.store.quarantine(cid, [f"llm_permanent: {exc}"], "llm", {})
             self.log(f"{cid} QUARANTINED (llm): {exc}")
             return CandidateResult(cid, "QUARANTINED", None, ["llm_permanent"], time.perf_counter() - started, stages)
+        except TransientLlmError as exc:
+            # Network/DNS/5xx failures are not data failures. Keep the candidate
+            # pending so a later run/resume retries it from its cached stages.
+            self.store.set_candidate_status(cid, "PENDING", {"transient_error": str(exc)})
+            self.log(f"{cid} PENDING after transient transport error: {exc}")
+            return CandidateResult(cid, "PENDING", None, ["transient_llm"], time.perf_counter() - started, stages)
         except Exception as exc:
             tb = traceback.format_exc()[-4000:]
             err_path = self.store.data_dir / "logs" / "errors.log"
@@ -862,20 +868,32 @@ class Pipeline:
         skipped = len(rows) - len(pending)
         processed = accepted = quarantined = failed = 0
         accepted_ids: list[str] = []
-        batch_size = max(1, self.cfg.execution.max_concurrency * 2)
+        max_workers = max(1, self.cfg.execution.max_concurrency)
+        pending_iter = iter(pending)
 
-        while pending:
+        def can_submit() -> bool:
             if stop_after is None and accepted >= limit:
-                break
+                return False
             if stop_after is not None and processed >= limit:
-                break
-            if not self._budget_ok():
-                notes.append("stopped: global cost budget reached")
-                break
-            batch, pending = pending[:batch_size], pending[batch_size:]
-            with ThreadPoolExecutor(max_workers=max(1, self.cfg.execution.max_concurrency)) as pool:
-                futures = {pool.submit(self.process_candidate, row, stop_after): row for row in batch}
-                for fut in as_completed(futures):
+                return False
+            return self._budget_ok()
+
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            inflight: dict[Any, dict[str, Any]] = {}
+
+            def fill() -> None:
+                while len(inflight) < max_workers and can_submit():
+                    try:
+                        row = next(pending_iter)
+                    except StopIteration:
+                        break
+                    inflight[pool.submit(self.process_candidate, row, stop_after)] = row
+
+            fill()
+            while inflight:
+                done, _ = wait(inflight, return_when=FIRST_COMPLETED)
+                for fut in done:
+                    inflight.pop(fut, None)
                     res = fut.result()
                     processed += 1
                     if res.status == "ACCEPTED":
@@ -888,6 +906,9 @@ class Pipeline:
                         failed += 1
                     elif res.status == "PENDING":
                         notes.append(f"{res.candidate_id}: {res.reasons}")
+                fill()
+            if not can_submit() and not inflight:
+                notes.append("stopped: acceptance/processing limit or cost budget reached")
 
         elapsed = time.perf_counter() - started
         try:
